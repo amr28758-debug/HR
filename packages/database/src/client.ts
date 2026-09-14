@@ -4,9 +4,10 @@ import type { DB } from './schema.js';
 
 const { Pool, types } = pg;
 
-// Return numeric/decimal as string (default) but int8 as number, dates as ISO date strings (no TZ shift).
+// int8 → number, numeric → number, date → ISO date string (no TZ shift), timestamptz → Date (pg default).
 types.setTypeParser(20, (v) => Number(v)); // int8
 types.setTypeParser(1082, (v) => v); // date → 'YYYY-MM-DD'
+types.setTypeParser(1700, (v) => Number(v)); // numeric → number (money is rounded to 2 dp; safe within 2^53)
 
 export interface CreateDbOptions {
   connectionString: string;

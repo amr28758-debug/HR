@@ -2,16 +2,18 @@
  * Kysely table typings. Keep in sync with packages/database/migrations.
  * Convention: Generated<T> for DB-defaulted columns; numeric columns come back as string.
  */
-import type { ColumnType, Generated, Insertable, Selectable, Updateable } from 'kysely';
+import type { ColumnType, Insertable, Selectable, Updateable } from 'kysely';
 import type {
   EmployeeStatus, EmploymentType, Gender, DocumentType, PunchDirection, VerificationMethod, EventSource,
   DayStatus, AttendanceExceptionType, ShiftType, PayrollRunStatus, CalcMethod,
 } from '@burtplace/types';
 
-type Timestamp = ColumnType<string, string | Date, string | Date>;
+/** Like Kysely's Generated<T> but unwraps nested ColumnType so generated timestamp/json/numeric columns keep their select types. */
+type Generated<T> = T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : ColumnType<T, T | undefined, T>;
+type Timestamp = ColumnType<Date, string | Date, string | Date>;
 type DateCol = ColumnType<string, string, string>;
-type Numeric = ColumnType<string, number | string, number | string>;
-type Json<T = unknown> = ColumnType<T, string | T, string | T>;
+type Numeric = ColumnType<number, number | string, number | string>; // pg NUMERIC parsed to number by client.ts (amounts are rounded to 2-4 dp)
+type Json<T = unknown> = ColumnType<T, string, string>;
 
 export interface RolesTable {
   id: Generated<string>; code: string; name: string; description: string | null; is_system: Generated<boolean>;
@@ -309,7 +311,19 @@ export interface ReconciliationRunsTable {
   id: Generated<string>; period_start: DateCol; period_end: DateCol; status: Generated<string>; summary: Json; findings: Generated<Json>; created_at: Generated<Timestamp>;
 }
 
+export interface VEmployeeDirectory {
+  id: string; employee_no: string; full_name_en: string; full_name_ar: string | null; status: EmployeeStatus; employment_type: EmploymentType; joining_date: string | null;
+  probation_status: string; probation_end_date: string | null; contract_end_date: string | null; mobile: string | null; work_email: string | null; photo_object_key: string | null;
+  matrix_user_id: string | null; is_office_staff: boolean; department_id: string | null; department_name: string | null; designation_id: string | null; designation_title: string | null;
+  site_id: string | null; site_name: string | null; project_id: string | null; project_code: string | null; project_name: string | null; cost_center_id: string | null; cost_center_code: string | null;
+  manager_id: string | null; manager_name: string | null; manager_employee_no: string | null; created_at: Date; updated_at: Date;
+}
+export interface VDocumentExpiry {
+  id: string; employee_id: string; employee_no: string; full_name_en: string; document_type: DocumentType; document_number: string | null; expiry_date: string; days_to_expiry: number; computed_status: string;
+}
+
 export interface DB {
+  v_employee_directory: VEmployeeDirectory; v_document_expiry: VDocumentExpiry;
   roles: RolesTable; permissions: PermissionsTable; role_permissions: RolePermissionsTable; users: UsersTable; user_roles: UserRolesTable; api_keys: ApiKeysTable; audit_logs: AuditLogsTable;
   cost_centers: CostCentersTable; departments: DepartmentsTable; designations: DesignationsTable; projects: ProjectsTable; sites: SitesTable; holidays: HolidaysTable;
   employees: EmployeesTable; employee_status_history: EmployeeStatusHistoryTable; employment_history: EmploymentHistoryTable; employee_contracts: EmployeeContractsTable; employee_documents: EmployeeDocumentsTable;
