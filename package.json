@@ -1,0 +1,28 @@
+{
+  "name": "burtplace-workforce",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Burtplace Workforce — HR, Attendance, Timesheet & Payroll platform",
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/**' build && pnpm --filter @burtplace/api build && pnpm --filter @burtplace/web build",
+    "dev": "pnpm -r --parallel --filter './apps/**' dev",
+    "dev:api": "pnpm --filter @burtplace/api dev",
+    "dev:web": "pnpm --filter @burtplace/web dev",
+    "worker": "pnpm --filter @burtplace/api worker",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm --filter @burtplace/core test",
+    "test:integration": "pnpm --filter @burtplace/api test",
+    "db:migrate": "pnpm --filter @burtplace/database migrate",
+    "db:seed": "pnpm --filter @burtplace/database seed",
+    "db:reset": "pnpm --filter @burtplace/database reset"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^22.10.2",
+    "vitest": "^2.1.8"
+  }
+}

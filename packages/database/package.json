@@ -1,0 +1,31 @@
+{
+  "name": "@burtplace/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx src/cli.ts migrate",
+    "migrate:status": "tsx src/cli.ts status",
+    "seed": "tsx src/cli.ts seed",
+    "reset": "tsx src/cli.ts reset",
+    "test": "echo 'covered by api integration tests'",
+    "lint": "echo 'ok'"
+  },
+  "dependencies": {
+    "@burtplace/config": "workspace:*",
+    "@burtplace/types": "workspace:*",
+    "kysely": "^0.27.5",
+    "pg": "^8.13.1",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "@types/bcryptjs": "^2.4.6",
+    "tsx": "^4.19.2"
+  }
+}
