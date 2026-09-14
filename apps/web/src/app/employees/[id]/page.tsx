@@ -26,12 +26,15 @@ function Profile({ id }: { id: string }) {
   const tabs: { key: Tab; label: string }[] = [{ key: 'overview', label: 'Overview' }, { key: 'personal', label: 'Personal' }, { key: 'employment', label: 'Employment' }, { key: 'attendance', label: 'Attendance' }, { key: 'leave', label: 'Leave' }, { key: 'timesheet', label: 'Timesheet' }, ...(canSalary ? [{ key: 'salary' as Tab, label: 'Salary' }] : []), { key: 'documents', label: 'Documents' }, { key: 'requests', label: 'Requests' }, ...(can('audit:read') ? [{ key: 'audit' as Tab, label: 'Audit' }] : [])];
   return (
     <>
-      <div className="card mb-6 flex flex-wrap items-center gap-5 p-6">
-        <Avatar name={d.fullNameEn} size="xl" />
-        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-semibold tracking-tight">{d.fullNameEn}</h1><Badge status={d.status} />{d.probationStatus === 'ON_PROBATION' && <Badge status="PROBATION">Probation ends {fmtDate(d.probationEndDate)}</Badge>}</div>
-          <p className="mt-1 text-sm text-muted">{d.employeeNo}{d.fullNameAr ? ` · ${d.fullNameAr}` : ''} · {d.designation?.title ?? 'No designation'} · {d.department?.name ?? 'No department'}</p>
-          <p className="mt-0.5 text-sm text-muted">{d.site?.name ?? '—'}{d.project ? ` · ${d.project.code} ${d.project.name}` : ''}{d.manager ? ` · Reports to ${d.manager.name}` : ''}</p></div>
-        {can('employees:transition') && d.allowedTransitions.length > 0 && <div className="flex flex-wrap gap-2">{d.allowedTransitions.map((t: string) => <button key={t} className="btn-secondary btn-sm" onClick={() => setTransition(t)}>→ {humanStatus(t)}</button>)}</div>}
+      <div className="card rise mb-6 overflow-hidden">
+        <div className="h-24 bg-hero" />
+        <div className="flex flex-wrap items-start gap-5 px-6 pb-6">
+          <Avatar name={d.fullNameEn} size="xl" className="-mt-12 ring-4 ring-surface shadow-lift" />
+          <div className="min-w-0 flex-1 pt-4"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-bold tracking-tight">{d.fullNameEn}</h1><Badge status={d.status} />{d.probationStatus === 'ON_PROBATION' && <Badge status="PROBATION">Probation ends {fmtDate(d.probationEndDate)}</Badge>}</div>
+            <p className="mt-1 text-sm text-muted"><span className="font-semibold text-fg">{d.employeeNo}</span>{d.fullNameAr ? ` · ${d.fullNameAr}` : ''} · {d.designation?.title ?? 'No designation'} · {d.department?.name ?? 'No department'}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">{[d.site?.name, d.project ? `${d.project.code} · ${d.project.name}` : null, d.manager ? `Reports to ${d.manager.name}` : null, d.joiningDate ? `Joined ${fmtDate(d.joiningDate)}` : null].filter(Boolean).map((c) => <span key={String(c)} className="rounded-full border bg-surface-2/60 px-2.5 py-1 font-medium text-muted">{c}</span>)}</div></div>
+          {can('employees:transition') && d.allowedTransitions.length > 0 && <div className="flex max-w-md flex-wrap justify-end gap-2 pt-4">{d.allowedTransitions.map((t: string) => <button key={t} className="btn-secondary btn-sm" onClick={() => setTransition(t)}>→ {humanStatus(t)}</button>)}</div>}
+        </div>
       </div>
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === 'overview' && <Overview d={d} id={id} />}

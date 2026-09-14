@@ -1,11 +1,12 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Users, UserCheck, UserX, Palmtree, Timer, Wallet, FolderKanban, AlertTriangle, FileWarning, Clock } from 'lucide-react';
+import { Users, UserCheck, UserX, Palmtree, Timer, Wallet, FolderKanban, AlertTriangle, FileWarning, Clock, CheckSquare, UserPlus, RefreshCw, FileSpreadsheet, Fingerprint, CalendarClock } from 'lucide-react';
 import { AppShell } from '@/components/layout/shell';
 import { useAuth, useUi } from '@/lib/providers';
 import { api } from '@/lib/api';
-import { Card, StatTile, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, StatTile, Badge, Skeleton, EmptyState, ActionItem } from '@/components/ui';
+import { ModuleMap } from '@/components/modules';
 import { BarsChart, COLORS, TrendChart } from '@/components/charts';
 import { fmtMoney, fmtNum, fmtTime, fmtMinutes, humanStatus } from '@/lib/format';
 
@@ -20,6 +21,58 @@ function Dashboard() {
   return <Me name={principal?.displayName ?? ''} />;
 }
 
+
+function greeting(locale: string) {
+  const h = new Date().getHours();
+  if (locale === 'ar') return h < 12 ? 'صباح الخير' : h < 18 ? 'مساء الخير' : 'مساء الخير';
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+function Hero({ subtitle, subtitleAr }: { subtitle: string; subtitleAr?: string }) {
+  const { principal, can } = useAuth();
+  const { locale } = useUi();
+  const first = (principal?.displayName ?? '').split(' ')[0];
+  const actions = [
+    can('employees:create') && { href: '/employees', icon: UserPlus, en: 'New employee', ar: 'موظف جديد' },
+    can('attendance:process') && { href: '/attendance', icon: RefreshCw, en: 'Recalculate attendance', ar: 'إعادة احتساب الحضور' },
+    can('timesheets:generate') && { href: '/timesheets', icon: FileSpreadsheet, en: 'Generate timesheets', ar: 'إنشاء كشوف الدوام' },
+    can('payroll:run') && { href: '/payroll', icon: Wallet, en: 'Payroll run', ar: 'دورة رواتب' },
+    can('leave:request:own') && !can('employees:create') && { href: '/leave', icon: Palmtree, en: 'Request leave', ar: 'طلب إجازة' },
+    can('workflows:act') && { href: '/approvals', icon: CheckSquare, en: 'Approvals', ar: 'الموافقات' },
+  ].filter(Boolean) as { href: string; icon: any; en: string; ar: string }[];
+  return (
+    <div className="rise relative mb-6 overflow-hidden rounded-3xl bg-hero p-7 text-white shadow-lift">
+      <div className="pointer-events-none absolute -end-24 -top-24 h-72 w-72 rounded-full bg-accent/25 blur-3xl" /><div className="pointer-events-none absolute -bottom-32 start-1/3 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+      <div className="relative flex flex-wrap items-end justify-between gap-6">
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">{new Date().toLocaleDateString(locale === 'ar' ? 'ar-AE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p><h1 className="mt-2 text-3xl font-bold tracking-tight">{greeting(locale)}, {first}</h1><p className="mt-1 text-sm text-white/75">{locale === 'ar' && subtitleAr ? subtitleAr : subtitle}</p></div>
+        <div className="flex flex-wrap gap-2">{actions.slice(0, 5).map((a) => { const Icon = a.icon; return <Link key={a.en} href={a.href} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 text-sm font-semibold backdrop-blur transition hover:bg-white/20"><Icon size={15} className="text-accent" />{locale === 'ar' ? a.ar : a.en}</Link>; })}</div>
+      </div>
+    </div>
+  );
+}
+function Attention() {
+  const { can } = useAuth();
+  const { locale } = useUi();
+  const ar = locale === 'ar';
+  const hr = useQuery({ queryKey: ['dash', 'hr'], queryFn: () => api<any>('/api/v1/dashboards/hr'), enabled: can('dashboard:hr') });
+  const tasks = useQuery({ queryKey: ['tasks', 'count'], queryFn: () => api<any>('/api/v1/workflows/tasks/mine?pageSize=1'), enabled: can('workflows:act') });
+  const devices = useQuery({ queryKey: ['devices', 'health'], queryFn: () => api<any>('/api/v1/devices/health'), enabled: can('devices:read') });
+  const d = hr.data;
+  const items = [
+    can('workflows:act') && { icon: <CheckSquare size={18} />, title: ar ? 'موافقات بانتظارك' : 'Approvals waiting for you', hint: ar ? 'إجازات، عمل إضافي، تصحيحات حضور' : 'Leave, overtime, attendance corrections', count: tasks.data?.meta?.total ?? 0, href: '/approvals', tone: 'warning' },
+    d && { icon: <Fingerprint size={18} />, title: ar ? 'استثناءات حضور مفتوحة' : 'Open attendance exceptions', hint: ar ? 'غياب، تأخير، بصمة ناقصة، إضافي غير معتمد' : 'Absence, late, missing punch, unapproved OT', count: d.openExceptions, href: '/attendance?tab=exceptions', tone: 'danger' },
+    d && { icon: <FileWarning size={18} />, title: ar ? 'مستندات تنتهي خلال 60 يوماً' : 'Documents expiring within 60 days', hint: ar ? `${d.expiredDocuments} منتهية بالفعل` : `${d.expiredDocuments} already expired`, count: d.expiringDocuments60d, href: '/reports', tone: 'warning' },
+    d && { icon: <Palmtree size={18} />, title: ar ? 'طلبات إجازة معلقة' : 'Pending leave requests', count: d.pendingLeave, href: '/leave', tone: 'default' },
+    d && { icon: <UserCheck size={18} />, title: ar ? 'فترة تجربة تنتهي خلال 30 يوماً' : 'Probation ending within 30 days', hint: ar ? `${d.onProbation} تحت التجربة` : `${d.onProbation} on probation`, count: d.probationEnding30d, href: '/employees?status=PROBATION', tone: 'default' },
+    devices.data && { icon: <CalendarClock size={18} />, title: ar ? 'مستخدمو أجهزة غير مربوطين بموظف' : 'Device users not mapped to an employee', count: devices.data.unmappedOpen, href: '/devices', tone: devices.data.unmappedOpen ? 'danger' : 'success' },
+  ].filter(Boolean) as any[];
+  if (!items.length) return null;
+  return <Card title={ar ? 'يحتاج انتباهك' : 'Needs your attention'} subtitle={ar ? 'المهام المفتوحة مرتبة حسب الأهمية' : 'Open items, most important first'} padded={false}><div className="divide-y divide-border/60 p-2">{items.map((i, k) => <ActionItem key={k} {...i} />)}</div></Card>;
+}
+
+function Sections() {
+  const { locale } = useUi();
+  return <div><p className="eyebrow mb-2">{locale === 'ar' ? 'الأقسام' : 'Sections'}</p><h2 className="mb-4 text-xl font-bold">{locale === 'ar' ? 'كل شيء في مكان واحد' : 'Everything in one place'}</h2><ModuleMap /></div>;
+}
 function Executive() {
   const { t } = useUi();
   const { can } = useAuth();
@@ -27,7 +80,7 @@ function Executive() {
   const d = q.data;
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">Executive overview</h1><p className="text-sm text-muted">{d?.date ?? ''} · live workforce position</p></div></div>
+      <Hero subtitle="Live workforce position across all projects and sites." subtitleAr="وضع القوى العاملة الحالي عبر كل المشاريع والمواقع." />
       {!d ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28" />)}</div> : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label={t('headcount')} value={fmtNum(d.headcount)} icon={<Users size={18} />} hint={`${d.projects} ${t('projects')} · ${d.sites} ${t('sites')}`} />
@@ -40,13 +93,15 @@ function Executive() {
           <StatTile label="Payroll employees" value={fmtNum(d.lastPayroll?.employeeCount ?? 0)} icon={<Users size={18} />} hint="in latest run" />
         </div>
       )}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card title="Attendance trend · 14 days" className="xl:col-span-2">{d ? <TrendChart data={d.attendanceTrend} series={[{ key: 'present', label: t('present'), color: COLORS.success }, { key: 'absent', label: t('absent'), color: COLORS.danger }, { key: 'onLeave', label: t('onLeave'), color: COLORS.info }]} /> : <Skeleton className="h-52" />}</Card>
+      <div className="grid gap-4 xl:grid-cols-5">
+        <div className="xl:col-span-2"><Attention /></div>
+        <Card title="Attendance trend · 14 days" className="xl:col-span-3">{d ? <TrendChart data={d.attendanceTrend} series={[{ key: 'present', label: t('present'), color: COLORS.success }, { key: 'absent', label: t('absent'), color: COLORS.danger }, { key: 'onLeave', label: t('onLeave'), color: COLORS.info }]} /> : <Skeleton className="h-52" />}</Card>
         <Card title="Headcount by status">{d ? <ul className="space-y-2">{d.headcountByStatus.sort((a: any, b: any) => b.count - a.count).map((s: any) => <li key={s.status} className="flex items-center justify-between text-sm"><Badge status={s.status} /><span className="tabular-nums font-medium">{s.count}</span></li>)}</ul> : <Skeleton className="h-52" />}</Card>
       </div>
       <Card title="Labour cost by project · latest payroll run" actions={can('reports:cost') && <Link className="btn-secondary btn-sm" href="/reports">Open cost report</Link>}>
         {d ? d.labourCostByProject.length ? <BarsChart data={d.labourCostByProject} xKey="projectCode" series={[{ key: 'normalCost', label: 'Normal', color: COLORS.brand }, { key: 'otCost', label: 'Overtime', color: COLORS.warning }]} stacked /> : <EmptyState title="No payroll run yet" hint="Labour cost appears once a payroll run is calculated." /> : <Skeleton className="h-52" />}
       </Card>
+      <Sections />
     </div>
   );
 }
@@ -56,16 +111,18 @@ function Hr() {
   const d = q.data;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">HR overview</h1>
+      <Hero subtitle="People, documents and attendance health at a glance." subtitleAr="الموظفون والمستندات وصحة الحضور في نظرة واحدة." />
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="New joiners · 30d" value={d.newJoiners30d} icon={<Users size={18} />} /><StatTile label="On probation" value={d.onProbation} hint={`${d.probationEnding30d} ending within 30 days`} tone="warning" icon={<UserCheck size={18} />} />
         <StatTile label="Expiring documents · 60d" value={d.expiringDocuments60d} hint={`${d.expiredDocuments} already expired`} tone={d.expiredDocuments ? 'danger' : 'warning'} icon={<FileWarning size={18} />} /><StatTile label="Open attendance exceptions" value={d.openExceptions} tone="warning" icon={<AlertTriangle size={18} />} />
         <StatTile label="Pending leave" value={d.pendingLeave} icon={<Palmtree size={18} />} /><StatTile label="Contracts ending · 60d" value={d.contractsEnding60d} icon={<FileWarning size={18} />} /><StatTile label="Leavers · 30d" value={d.leavers30d} icon={<UserX size={18} />} /><StatTile label="Movements · 30d" value={d.movements30d.reduce((s: number, m: any) => s + m.count, 0)} icon={<FolderKanban size={18} />} />
       </div>}
+      <Attention />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Exceptions by type" actions={<Link className="btn-secondary btn-sm" href="/attendance?tab=exceptions">Open queue</Link>}>{d ? d.exceptionsByType.length ? <BarsChart data={d.exceptionsByType.map((e: any) => ({ type: humanStatus(e.type), count: e.count }))} xKey="type" series={[{ key: 'count', label: 'Open', color: COLORS.warning }]} /> : <EmptyState /> : <Skeleton className="h-52" />}</Card>
         <Card title="Documents expiring soon" padded={false}><div className="max-h-72 overflow-auto"><table className="data"><thead><tr><th>Employee</th><th>Document</th><th>Expiry</th><th>Days</th></tr></thead><tbody>{d?.expiringList.map((x: any) => <tr key={`${x.employeeNo}-${x.documentType}`}><td className="font-medium">{x.employeeNo} · {x.name}</td><td>{humanStatus(x.documentType)}</td><td>{x.expiryDate}</td><td><Badge status={x.daysToExpiry < 0 ? 'EXPIRED' : 'EXPIRING'}>{x.daysToExpiry}d</Badge></td></tr>)}</tbody></table>{d?.expiringList.length === 0 && <EmptyState title="No expiring documents" />}</div></Card>
       </div>
+      <Sections />
     </div>
   );
 }
@@ -75,13 +132,13 @@ function PayrollDash() {
   const d = q.data;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Payroll overview</h1>
+      <Hero subtitle="Latest run, exceptions and cost." subtitleAr="آخر دورة رواتب والاستثناءات والتكلفة." />
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Current run" value={d.run?.code ?? '—'} hint={d.run && <Badge status={d.run.status} />} icon={<Wallet size={18} />} /><StatTile label="Gross" value={fmtMoney(d.run?.totalGross)} /><StatTile label="Deductions" value={fmtMoney(d.run?.totalDeductions)} tone="danger" /><StatTile label="Net" value={fmtMoney(d.run?.totalNet)} tone="success" />
         <StatTile label="OT cost" value={fmtMoney(d.otCost)} tone="warning" /><StatTile label="Employees with exceptions" value={d.exceptions} tone={d.exceptions ? 'warning' : 'default'} /><StatTile label="Pending adjustments" value={d.pendingAdjustments} /><StatTile label="Employees" value={d.run?.employeeCount ?? 0} />
       </div>}
       <div className="grid gap-4 xl:grid-cols-2"><Card title="Net by department">{d ? <BarsChart data={d.byDepartment} xKey="department" series={[{ key: 'net', label: 'Net', color: COLORS.brand }]} /> : <Skeleton className="h-52" />}</Card><Card title="Net payroll history">{d ? <BarsChart data={d.history} xKey="code" series={[{ key: 'totalNet', label: 'Net', color: COLORS.success }]} /> : <Skeleton className="h-52" />}</Card></div>
-      <Link href="/payroll" className="btn-primary">Open payroll</Link>
+      <Sections />
     </div>
   );
 }
@@ -92,19 +149,21 @@ function Manager() {
   const d = q.data;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">My team · {d?.date}</h1>
+      <Hero subtitle={`Your team today · ${d?.date ?? ''}`} />
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatTile label="Team" value={d.teamSize} icon={<Users size={18} />} /><StatTile label={t('present')} value={d.present} tone="success" /><StatTile label={t('absent')} value={d.absent} tone={d.absent ? 'danger' : 'default'} hint={`${d.late} late · ${d.missingPunch} missing punch`} /><StatTile label={t('pendingApprovals')} value={d.pendingApprovals} tone="warning" hint={<Link href="/approvals" className="underline">Review</Link>} /></div>}
       <Card title="Team today" padded={false}><table className="data"><thead><tr><th>Employee</th><th>Status</th><th>In</th><th>Out</th><th>Late</th><th>OT</th></tr></thead><tbody>{d?.team.map((m: any) => <tr key={m.employeeId}><td><Link href={`/employees/${m.employeeId}`} className="font-medium hover:underline">{m.employeeNo} · {m.name}</Link></td><td><Badge status={m.status ?? 'UNKNOWN'} /></td><td>{fmtTime(m.firstInAt)}</td><td>{fmtTime(m.lastOutAt)}</td><td>{fmtMinutes(m.lateMinutes)}</td><td>{fmtMinutes(m.overtimeMinutes)}</td></tr>)}</tbody></table></Card>
+      <Sections />
     </div>
   );
 }
 
 function Me({ name }: { name: string }) {
+  void name;
   const q = useQuery({ queryKey: ['dash', 'me'], queryFn: () => api<any>('/api/v1/dashboards/me') });
   const d = q.data;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Hello, {name.split(' ')[0]}</h1>
+      <Hero subtitle="Your attendance, leave and payslips." subtitleAr="حضورك وإجازاتك وقسائم راتبك." />
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatTile label="Today" value={<Badge status={d.today.status ?? 'UNKNOWN'} className="text-sm" />} hint={`In ${fmtTime(d.today.firstInAt)} · Out ${fmtTime(d.today.lastOutAt)}`} /><StatTile label="Present this month" value={d.monthSummary.present} tone="success" hint={`${d.monthSummary.absent} absent · ${d.monthSummary.late} late`} /><StatTile label="Overtime this month" value={fmtMinutes(d.monthSummary.overtimeMinutes)} /><StatTile label="Pending requests" value={d.pendingRequests} /></div>}
       <div className="grid gap-4 md:grid-cols-2"><Card title="Leave balances">{d?.leaveBalances.map((b: any) => <div key={b.code} className="flex items-center justify-between py-1.5 text-sm"><span>{humanStatus(b.code)}</span><span className="font-semibold tabular-nums">{b.available} days</span></div>)}<Link href="/leave" className="btn-primary btn-sm mt-3">Request leave</Link></Card><Card title="Quick links"><div className="grid grid-cols-2 gap-2">{[['/attendance', 'My attendance'], ['/timesheets', 'My timesheets'], ['/payroll', 'My payslips'], [`/employees/${d?.employee?.id ?? ''}`, 'My profile']].map(([h, l]) => <Link key={h} href={h} className="btn-secondary">{l}</Link>)}</div></Card></div>
     </div>
