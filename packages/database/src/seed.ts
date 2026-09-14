@@ -218,15 +218,15 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
     for (const [code, name, paid, ent, accrual, statutory] of leaveTypes) {
       const lt = await c.query(`INSERT INTO leave_types(code, name, is_paid) VALUES ($1,$2,$3) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name RETURNING id`, [code, name, paid]);
       await c.query(
-        `INSERT INTO leave_policies(leave_type_id, code, name, annual_entitlement_days, accrual_method, is_statutory, max_carry_forward_days)
-         VALUES ($1,$2,$3,$4,$5,$6, CASE WHEN $2 = 'ANNUAL-DEFAULT' THEN 10 ELSE 0 END) ON CONFLICT (code) DO NOTHING`,
+        `INSERT INTO leave_policies(leave_type_id, code, name, annual_entitlement_days, accrual_method, is_statutory, max_carry_forward_days, effective_from)
+         VALUES ($1,$2,$3,$4,$5,$6, CASE WHEN $2 = 'ANNUAL-DEFAULT' THEN 10 ELSE 0 END, '2026-01-01') ON CONFLICT (code) DO NOTHING`,
         [lt.rows[0].id, `${code}-DEFAULT`, `${name} — default policy`, ent, accrual, statutory],
       );
     }
     // Overtime rules (company policy examples — multipliers REQUIRE HR/LEGAL CONFIRMATION)
     for (const [code, name, kind, mult] of [['OT-NORMAL', 'Normal day OT', 'NORMAL', 1.25], ['OT-WEEKOFF', 'Week-off OT', 'WEEK_OFF', 1.5], ['OT-HOLIDAY', 'Public holiday OT', 'PUBLIC_HOLIDAY', 1.5]]) {
       await c.query(
-        `INSERT INTO overtime_rules(code, name, day_kind, multiplier, max_minutes_per_day, requires_hr_approval_over_minutes) VALUES ($1,$2,$3,$4,240,120) ON CONFLICT (code) DO NOTHING`,
+        `INSERT INTO overtime_rules(code, name, day_kind, multiplier, max_minutes_per_day, requires_hr_approval_over_minutes, effective_from) VALUES ($1,$2,$3,$4,240,120,'2026-01-01') ON CONFLICT (code) DO NOTHING`,
         [code, name, kind, mult],
       );
     }
