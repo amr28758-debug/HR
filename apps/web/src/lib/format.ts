@@ -1,0 +1,11 @@
+export const fmtMinutes = (m: number | null | undefined) => { if (!m) return '—'; const h = Math.floor(m / 60), r = m % 60; return h ? `${h}h ${r ? `${r}m` : ''}`.trim() : `${r}m`; };
+export const fmtHours = (m: number | null | undefined) => (m ? (m / 60).toFixed(1) : '0.0');
+export const fmtTime = (iso: string | null | undefined, tz = 'Asia/Dubai') => (iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : '—');
+export const fmtDate = (d: string | null | undefined, locale = 'en-GB') => (d ? new Date(d.length === 10 ? `${d}T00:00:00` : d).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+export const fmtDateTime = (iso: string | null | undefined, tz = 'Asia/Dubai') => (iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz }) : '—');
+export const fmtMoney = (n: number | null | undefined, currency = 'AED') => (n === null || n === undefined ? '—' : new Intl.NumberFormat('en-AE', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n));
+export const fmtNum = (n: number | null | undefined) => (n === null || n === undefined ? '—' : new Intl.NumberFormat('en').format(n));
+export const monthName = (m: number, locale = 'en') => new Date(2026, m - 1, 1).toLocaleString(locale, { month: 'long' });
+export const today = () => new Date().toISOString().slice(0, 10);
+export const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join('');
+export const humanStatus = (s: string | null | undefined) => (s ?? '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());

@@ -27,6 +27,7 @@ import { reportRoutes } from './modules/reports/routes.js';
 import { searchRoutes } from './modules/search/routes.js';
 import { auditRoutes } from './modules/audit/routes.js';
 import { integrationRoutes } from './modules/integrations/routes.js';
+import { migrationRoutes } from './modules/migration/routes.js';
 import { JobQueues } from './jobs/queues.js';
 
 export interface BuildAppOptions {
@@ -103,6 +104,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
     await api.register(searchRoutes, { prefix: '/search' });
     await api.register(auditRoutes, { prefix: '/audit' });
     await api.register(integrationRoutes, { prefix: '/integrations' });
+    await api.register(migrationRoutes, { prefix: '/migration' });
   }, { prefix: '/api/v1' });
 
   return app;
