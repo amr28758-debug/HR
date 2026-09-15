@@ -16,6 +16,15 @@ const meSchema = z.object({
 export const authRoutes: FastifyPluginAsync<{ env: Env }> = async (app, { env }) => {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
+  r.get('/users', { preHandler: requirePermission('users:read', 'workflows:act'), schema: { tags: ['auth'], summary: 'Active users (for delegation & assignment pickers). Emails only with users:read.', response: { 200: z.array(z.object({ id: z.string(), displayName: z.string(), email: z.string().nullable(), roles: z.array(z.string()), employeeNo: z.string().nullable() })) } } }, async (req) => {
+    const p = requireAuth(req);
+    const full = p.permissions.has('users:read');
+    const rows = await app.db.selectFrom('users as u').leftJoin('employees as e', 'e.user_id', 'u.id').select(['u.id', 'u.display_name', 'u.email', 'e.employee_no']).where('u.is_active', '=', true).where('u.is_service_account', '=', false).orderBy('u.display_name').execute();
+    const roles = await app.db.selectFrom('user_roles as ur').innerJoin('roles as r', 'r.id', 'ur.role_id').select(['ur.user_id', 'r.code']).execute();
+    const byUser = new Map<string, string[]>(); for (const x of roles) byUser.set(x.user_id, [...(byUser.get(x.user_id) ?? []), x.code]);
+    return rows.map((u) => ({ id: u.id, displayName: u.display_name, email: full ? u.email : null, roles: byUser.get(u.id) ?? [], employeeNo: u.employee_no ?? null }));
+  });
+
   r.get('/me', { schema: { tags: ['auth'], summary: 'Current principal', response: { 200: meSchema, 401: errorSchema } } }, async (req) => {
     const p = requireAuth(req);
     return { ...p, permissions: [...p.permissions].sort() };

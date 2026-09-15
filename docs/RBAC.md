@@ -17,6 +17,15 @@ The matrix lives in `packages/database/src/rbac.ts` and is seeded into `roles`, 
 | MANAGEMENT | executive dashboards, final approvals (payroll, salary change, resignation) |
 | SERVICE_DEVICE_GATEWAY | machine account: `attendance:ingest`, `devices:read` |
 
+## HR OS permissions
+
+`jobs:read/write`, `compensation:read/write`, `requests:create:own|any`, `requests:read[:team|:own]`,
+`disciplinary:read/write`, `performance:read[:team|:own]/write`, `training:read[:own]/write`,
+`letters:generate`, `letters:read:own`, `letters:templates:write`, `notes:read/write/confidential`,
+`analytics:read`, `config:write`, `delegation:manage`, `bulk:run`. Restricted request types
+(salary, promotion, loans, bonuses, deductions, disciplinary, termination) hide their content from
+callers without `compensation:read` / `disciplinary:read` unless the request is their own.
+
 ## Scoping rules
 
 - **Team** = direct reports (4 levels) ∪ employees of projects the user's employee record manages ∪ employees of departments they manage.

@@ -107,6 +107,14 @@ export const payrollRoutes: FastifyPluginAsync = async (app) => {
     const lm = (l: Record<string, any>) => ({ componentCode: l.component_code, description: l.description, quantity: l.quantity === null ? null : n(l.quantity), rate: l.rate === null ? null : n(l.rate), amount: n(l.amount), isAdjustment: l.is_adjustment });
     return { ...peMap(pe), run: runMap(run), earnings: earnings.map(lm), deductions: deductions.map(lm), trace: hasPermission(p, 'payroll:read') ? pe.calculation_trace : null, timesheetId: pe.timesheet_id, payslipNo: slip?.payslip_no ?? null };
   });
+  r.get('/employee-history/:employeeId', { preHandler: requirePermission('payroll:read', 'payslips:read:own'), schema: { tags: ['payroll'], summary: 'Payroll history for one employee (payroll:read; employees see their own locked periods)', params: z.object({ employeeId: z.string().uuid() }), response: { 200: z.array(z.object({ id: z.string(), year: z.number(), month: z.number(), runCode: z.string(), runStatus: z.string(), payslipNo: z.string().nullable(), grossSalary: z.number(), totalEarnings: z.number(), totalDeductions: z.number(), netSalary: z.number(), hasExceptions: z.boolean() })) } } }, async (req) => {
+    const p = requireAuth(req);
+    const own = p.employeeId === req.params.employeeId;
+    if (!hasPermission(p, 'payroll:read') && !own) throw notFound('Employee', req.params.employeeId);
+    let q = app.db.selectFrom('payroll_employees as pe').innerJoin('payroll_runs as r', 'r.id', 'pe.payroll_run_id').leftJoin('payslips as s', 's.payroll_employee_id', 'pe.id').select(['pe.id', 'r.period_year', 'r.period_month', 'r.code', 'r.status', 's.payslip_no', 'pe.gross_salary', 'pe.total_earnings', 'pe.total_deductions', 'pe.net_salary', 'pe.has_exceptions']).where('pe.employee_id', '=', req.params.employeeId);
+    if (!hasPermission(p, 'payroll:read')) q = q.where('r.status', 'in', ['LOCKED', 'BANK_WPS', 'PAID', 'CLOSED']);
+    return (await q.orderBy('r.period_year', 'desc').orderBy('r.period_month', 'desc').execute()).map((x) => ({ id: x.id, year: x.period_year, month: x.period_month, runCode: x.code, runStatus: x.status, payslipNo: x.payslip_no ?? null, grossSalary: n(x.gross_salary), totalEarnings: n(x.total_earnings), totalDeductions: n(x.total_deductions), netSalary: n(x.net_salary), hasExceptions: x.has_exceptions }));
+  });
   r.get('/my-payslips', { preHandler: requirePermission('payslips:read:own'), schema: { tags: ['payroll'], summary: 'Published payslips for the current employee', response: { 200: z.array(z.object({ payrollEmployeeId: z.string(), payslipNo: z.string(), year: z.number(), month: z.number(), netSalary: z.number(), status: z.string() })) } } }, async (req) => {
     const p = requireAuth(req);
     if (!p.employeeId) return [];

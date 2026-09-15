@@ -34,6 +34,7 @@ import { peopleRoutes } from './modules/people/routes.js';
 import { hrRequestRoutes } from './modules/hr-requests/routes.js';
 import { compensationRoutes } from './modules/compensation/routes.js';
 import { analyticsRoutes } from './modules/analytics/routes.js';
+import { assetRoutes } from './modules/assets/routes.js';
 import { commandCenterRoutes } from './modules/employees/command-center.js';
 import { JobQueues } from './jobs/queues.js';
 
@@ -74,7 +75,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
       tags: [
         { name: 'auth' }, { name: 'employees' }, { name: 'organization' }, { name: 'devices' }, { name: 'attendance' }, { name: 'shifts' }, { name: 'timesheets' },
         { name: 'leave' }, { name: 'overtime' }, { name: 'payroll' }, { name: 'workflows' }, { name: 'dashboards' }, { name: 'reports' }, { name: 'search' }, { name: 'audit' }, { name: 'integrations' },
-        { name: 'hr-requests' }, { name: 'jobs' }, { name: 'compensation' }, { name: 'letters' }, { name: 'people' }, { name: 'analytics' },
+        { name: 'hr-requests' }, { name: 'jobs' }, { name: 'compensation' }, { name: 'letters' }, { name: 'people' }, { name: 'analytics' }, { name: 'assets' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -120,6 +121,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
     await api.register(letterRoutes, { prefix: '/letters' });
     await api.register(peopleRoutes, { prefix: '/people' });
     await api.register(analyticsRoutes, { prefix: '/analytics' });
+    await api.register(assetRoutes, { prefix: '/assets' });
   }, { prefix: '/api/v1' });
 
   return app;

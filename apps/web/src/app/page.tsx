@@ -5,7 +5,7 @@ import { Users, UserCheck, UserX, Palmtree, Timer, Wallet, FolderKanban, AlertTr
 import { AppShell } from '@/components/layout/shell';
 import { useAuth, useUi } from '@/lib/providers';
 import { api } from '@/lib/api';
-import { Card, StatTile, Badge, Skeleton, EmptyState, ActionItem } from '@/components/ui';
+import { Card, StatTile, Badge, Skeleton, EmptyState, ActionItem, cn } from '@/components/ui';
 import { ModuleMap } from '@/components/modules';
 import { BarsChart, COLORS, TrendChart } from '@/components/charts';
 import { fmtMoney, fmtNum, fmtTime, fmtMinutes, humanStatus } from '@/lib/format';
@@ -21,6 +21,23 @@ function Dashboard() {
   return <Me name={principal?.displayName ?? ''} />;
 }
 
+
+/** HR control center: NEEDS ATTENTION queue computed by /analytics/control-center. */
+function ControlCenter() {
+  const { can } = useAuth();
+  const { locale } = useUi();
+  const ar = locale === 'ar';
+  const q = useQuery({ queryKey: ['control-center'], queryFn: () => api<any>('/api/v1/analytics/control-center'), enabled: can('analytics:read') || can('employees:read'), refetchInterval: 120_000 });
+  if (!q.data) return null;
+  const d = q.data;
+  const LV: Record<string, string> = { critical: 'bg-danger/10 text-danger ring-danger/20', warning: 'bg-warning/10 text-warning ring-warning/20', info: 'bg-info/10 text-info ring-info/20' };
+  const crit = d.attention.filter((a: any) => a.level === 'critical');
+  return (
+    <Card title={ar ? 'يحتاج إلى انتباه' : 'Needs attention'} subtitle={ar ? `${d.headcount.working} موظفاً عاملاً · ${d.headcount.probation} تحت التجربة · ${d.headcount.clearance} في إجراءات المغادرة` : `${d.headcount.working.toLocaleString()} working · ${d.headcount.probation} on probation · ${d.headcount.clearance} in clearance · +${d.headcount.joinedThisMonth} / −${d.headcount.leftThisMonth} this month`} actions={crit.length > 0 ? <Badge status="EXPIRED">{crit.length} critical</Badge> : <Badge status="ACTIVE">{ar ? 'لا حرج' : 'No critical items'}</Badge>}>
+      {d.attention.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{d.attention.map((a: any) => <Link key={a.key} href={a.link} className={cn('flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 ring-1 transition hover:brightness-95', LV[a.level])}><span className="text-sm font-medium leading-tight">{a.label}</span><span className="text-xl font-bold tabular-nums">{a.count}</span></Link>)}</div> : <EmptyState title={ar ? 'كل شيء على ما يرام' : 'All clear'} />}
+    </Card>
+  );
+}
 
 function greeting(locale: string) {
   const h = new Date().getHours();
@@ -81,6 +98,7 @@ function Executive() {
   return (
     <div className="space-y-6">
       <Hero subtitle="Live workforce position across all projects and sites." subtitleAr="وضع القوى العاملة الحالي عبر كل المشاريع والمواقع." />
+      <ControlCenter />
       {!d ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28" />)}</div> : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label={t('headcount')} value={fmtNum(d.headcount)} icon={<Users size={18} />} hint={`${d.projects} ${t('projects')} · ${d.sites} ${t('sites')}`} />
@@ -112,6 +130,7 @@ function Hr() {
   return (
     <div className="space-y-6">
       <Hero subtitle="People, documents and attendance health at a glance." subtitleAr="الموظفون والمستندات وصحة الحضور في نظرة واحدة." />
+      <ControlCenter />
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="New joiners · 30d" value={d.newJoiners30d} icon={<Users size={18} />} /><StatTile label="On probation" value={d.onProbation} hint={`${d.probationEnding30d} ending within 30 days`} tone="warning" icon={<UserCheck size={18} />} />
         <StatTile label="Expiring documents · 60d" value={d.expiringDocuments60d} hint={`${d.expiredDocuments} already expired`} tone={d.expiredDocuments ? 'danger' : 'warning'} icon={<FileWarning size={18} />} /><StatTile label="Open attendance exceptions" value={d.openExceptions} tone="warning" icon={<AlertTriangle size={18} />} />
@@ -159,11 +178,13 @@ function Manager() {
 
 function Me({ name }: { name: string }) {
   void name;
+  const { locale } = useUi();
   const q = useQuery({ queryKey: ['dash', 'me'], queryFn: () => api<any>('/api/v1/dashboards/me') });
   const d = q.data;
   return (
     <div className="space-y-6">
       <Hero subtitle="Your attendance, leave and payslips." subtitleAr="حضورك وإجازاتك وقسائم راتبك." />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[['/me', 'My profile & documents', 'ملفي ومستنداتي'], ['/requests?new=1', 'Raise a request (loan, letter, training)', 'تقديم طلب'], ['/documents/letters', 'My letters', 'خطاباتي'], ['/compensation', 'My loans & bonuses', 'قروضي ومكافآتي']].map(([h, en, arL]) => <Link key={h} href={h} className="card card-hover flex items-center justify-between px-4 py-3 text-sm font-medium"><span>{locale === 'ar' ? arL : en}</span><span className="text-muted">→</span></Link>)}</div>
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatTile label="Today" value={<Badge status={d.today.status ?? 'UNKNOWN'} className="text-sm" />} hint={`In ${fmtTime(d.today.firstInAt)} · Out ${fmtTime(d.today.lastOutAt)}`} /><StatTile label="Present this month" value={d.monthSummary.present} tone="success" hint={`${d.monthSummary.absent} absent · ${d.monthSummary.late} late`} /><StatTile label="Overtime this month" value={fmtMinutes(d.monthSummary.overtimeMinutes)} /><StatTile label="Pending requests" value={d.pendingRequests} /></div>}
       <div className="grid gap-4 md:grid-cols-2"><Card title="Leave balances">{d?.leaveBalances.map((b: any) => <div key={b.code} className="flex items-center justify-between py-1.5 text-sm"><span>{humanStatus(b.code)}</span><span className="font-semibold tabular-nums">{b.available} days</span></div>)}<Link href="/leave" className="btn-primary btn-sm mt-3">Request leave</Link></Card><Card title="Quick links"><div className="grid grid-cols-2 gap-2">{[['/attendance', 'My attendance'], ['/timesheets', 'My timesheets'], ['/payroll', 'My payslips'], [`/employees/${d?.employee?.id ?? ''}`, 'My profile']].map(([h, l]) => <Link key={h} href={h} className="btn-secondary">{l}</Link>)}</div></Card></div>
     </div>

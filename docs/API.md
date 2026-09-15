@@ -32,6 +32,23 @@ Base path `/api/v1`. OpenAPI 3.1 is generated from the Zod schemas and served at
 | `/integrations` | connections, `biometric/capabilities`, logs |
 | `/migration` | batches (create+validate, apply) |
 
+### HR Operating System (see HR-OS.md)
+
+| Prefix | Purpose |
+|---|---|
+| `/employees/:id/summary`, `/timeline`, `/compensation`, `/employees/org-chart`, `/employees/documents/expiring`, `/employees/bulk` | Command Center, org chart, document center, bulk operations |
+| `/employees/:id/promote|transfer|salary-change|bonus|deduction|loan|advance|assign-training|disciplinary|resign|terminate|generate-letter|start-clearance` | Business actions → HR requests |
+| `/hr-requests` | Request center (list, detail with what-changed & approval trail, cancel, re-apply, types) |
+| `/jobs` | Career levels, grades, families/functions, titles, job descriptions & versions, lookups |
+| `/compensation` | Deductions, bonuses, loans & instalments, increment cycles, grade check |
+| `/letters` | Templates, preview, generate, list, HTML, revoke, public `verify/:code` |
+| `/people` | Performance cycles/reviews, training catalog/records, disciplinary, notes |
+| `/analytics` | Control center, HR analytics, workforce cost, HR calendar |
+| `/assets` | Asset register, assign/return, per-employee assets |
+| `/workflows/delegations` | Approval delegation |
+| `/payroll/employee-history/:employeeId` | Payroll history per employee |
+| `/auth/users` | User picker (emails only with `users:read`) |
+
 ## Device gateway contract
 
 `POST /api/v1/attendance/events` with `X-API-Key`. Body: one object or an array (≤5,000):

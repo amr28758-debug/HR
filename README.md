@@ -49,12 +49,13 @@ pnpm test               # everything (needs DATABASE_URL_TEST)
 - [Architecture](docs/ARCHITECTURE.md) · [ERD & schema](docs/ERD.md) · [API](docs/API.md) · [RBAC](docs/RBAC.md)
 - [Attendance engine rules](docs/ATTENDANCE.md) · [Payroll policy & formulas](docs/PAYROLL.md)
 - [Matrix ARGO FACE / VYOM integration](docs/MATRIX-INTEGRATION.md) · [Legacy migration (Zoho)](docs/MIGRATION.md)
+- [HR Operating System — Command Center, HR requests, talent, compensation, letters](docs/HR-OS.md)
 - [Security](docs/SECURITY.md) · [Releases & roadmap](docs/RELEASES.md) · [Development guide](docs/DEVELOPMENT.md)
 
 ## Repository layout
 
 ```
-apps/api            Fastify API + BullMQ worker (modules/*, integrations/biometric, jobs)
+apps/api            Fastify API + BullMQ worker (modules/* incl. hr-requests, jobs, compensation, letters, people, analytics, assets)
 apps/web            Next.js web application
 packages/core       Pure domain engines (shift, attendance, timesheet, formula, payroll, lifecycle)
 packages/database   SQL migrations, Kysely typings, RBAC matrix, seed

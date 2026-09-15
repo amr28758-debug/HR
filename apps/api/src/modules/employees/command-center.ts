@@ -277,6 +277,15 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
     return { mode: b.confirm ? 'APPLIED' as const : 'PREVIEW' as const, action: b.action, total: b.employeeIds.length, eligible, skipped: results.length - eligible, results };
   });
 
+  // ── Document center: expiry watch-list ──
+  r.get('/documents/expiring', { preHandler: requirePermission('employees:documents:read', 'reports:hr'), schema: { tags: ['employees'], summary: 'Documents expiring within N days (or already expired) across working employees', querystring: z.object({ days: z.coerce.number().int().min(0).max(730).default(90), type: z.string().optional() }), response: { 200: z.array(z.object({ id: z.string(), employeeId: z.string(), employeeNo: z.string(), employeeName: z.string(), documentType: z.string(), documentNumber: z.string().nullable(), expiryDate: z.string(), daysToExpiry: z.number(), site: z.string().nullable(), project: z.string().nullable(), department: z.string().nullable() })) } } }, async (req) => {
+    let q = app.db.selectFrom('employee_documents as d').innerJoin('employees as e', 'e.id', 'd.employee_id').leftJoin('sites as s', 's.id', 'e.site_id').leftJoin('projects as pr', 'pr.id', 'e.project_id').leftJoin('departments as dep', 'dep.id', 'e.department_id')
+      .select(['d.id', 'e.id as employee_id', 'e.employee_no', 'e.full_name_en', 'd.document_type', 'd.document_number', 'd.expiry_date', 's.name as site', 'pr.name as project', 'dep.name as department']).where('d.deleted_at', 'is', null).where('d.expiry_date', 'is not', null).where('e.deleted_at', 'is', null).where('e.status', 'in', ['ACTIVE', 'PROBATION', 'CONFIRMED', 'TRANSFERRED', 'PROMOTED', 'RESIGNED', 'CLEARANCE'])
+      .where('d.expiry_date', '<=', sql<string>`(CURRENT_DATE + ${req.query.days} * interval '1 day')::date`);
+    if (req.query.type) q = q.where('d.document_type', '=', req.query.type.toUpperCase() as any);
+    return (await q.orderBy('d.expiry_date').execute()).map((d) => ({ id: d.id, employeeId: d.employee_id, employeeNo: d.employee_no, employeeName: d.full_name_en, documentType: d.document_type, documentNumber: d.document_number ? `···${d.document_number.slice(-4)}` : null, expiryDate: d.expiry_date!, daysToExpiry: daysTo(d.expiry_date) ?? 0, site: d.site ?? null, project: d.project ?? null, department: d.department ?? null }));
+  });
+
   // ── Org chart ──
   const nodeOut: z.ZodType<any> = z.lazy(() => z.object({ id: z.string(), employeeNo: z.string(), name: z.string(), designation: z.string().nullable(), department: z.string().nullable(), project: z.string().nullable(), photoObjectKey: z.string().nullable(), status: z.string(), directReports: z.number(), totalReports: z.number(), children: z.array(nodeOut) }));
   r.get('/org-chart', { preHandler: requirePermission('employees:read', 'employees:read:team'), schema: { tags: ['employees'], summary: 'Org chart from reporting lines (rootId optional; depth default 4)', querystring: z.object({ rootId: z.string().uuid().optional(), departmentId: z.string().uuid().optional(), depth: z.coerce.number().int().min(1).max(8).default(4) }), response: { 200: z.array(nodeOut) } } }, async (req) => {

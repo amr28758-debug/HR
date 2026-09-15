@@ -45,9 +45,26 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 | Recruitment/offer states, onboarding checklist generation, probation tracking | ✅ (state machine + checklists) |
 | Transfer / promotion history | ✅ |
 | Resignation workflow → clearance checklist → final settlement state | ✅ states & workflow · ⬜ settlement formulas (REQUIRES LEGAL CONFIRMATION) |
-| Assets & employee assets | 🟡 schema ready, API ⬜ |
+| Assets & employee assets | ✅ register, assign, return, employee view |
 | Document upload service (S3 pre-signed) | ⬜ |
 | Legacy migration framework + Zoho mapper | ✅ |
+
+## Release 5 — HR Operating System (this repository state)
+
+| Item | Status |
+|---|---|
+| Employee Command Center: summary (employment health, attention, cards), 19 RBAC-filtered tabs, smart Actions menu, unified timeline, compensation history with what-changed | ✅ |
+| HR requests engine: typed payloads, before-snapshot, approval chains per type, automatic application (promotion, transfer, salary change, increment, loan/advance schedules, bonus, deduction, letter, training, disciplinary, resignation, termination), cancel / re-apply | ✅ |
+| Job architecture: career levels, families → functions → titles, grades with salary bands, versioned & approved job descriptions | ✅ (bands 🟡 REQUIRES HR CONFIRMATION) |
+| Compensation center: deductions, bonuses, loans + instalment schedules (reschedule/pause), increment cycles with bulk edit and application; payroll picks them up and marks APPLIED on lock | ✅ |
+| Talent: performance cycles/reviews/goals, training catalog/records/certificate expiry, confidential disciplinary register, HR notes | ✅ (lightweight) |
+| Letters: versioned templates EN/AR/bilingual, variables, numbering, letterhead, QR verification code, public verify page, revocation | ✅ (QR image rendering & PDF export ⬜) |
+| Document center (expiry watch-list by category), asset register | ✅ |
+| Workflow delegation, HR calendar, org chart, HR control center (NEEDS ATTENTION), HR analytics, workforce cost by project/site/department/cost center/grade/employee | ✅ |
+| Directory: table / grid / compact views, talent & compliance filters, bulk operations (preview → confirm → per-employee results) | ✅ |
+| New IA: Dashboard · People · Talent · Time · Leave · Compensation · Payroll · Documents · Assets · Workflows · Reports · Administration; ⌘K quick actions; ESS entry `/me` | ✅ |
+| Configuration center: code lists, approval chains, policies, rules | ✅ (read + code lists; policy editing via module pages) |
+| Object storage for letters/attachments, email/Teams senders, mobile push | ⬜ |
 
 ## Next steps (recommended order)
 
@@ -55,4 +72,5 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 2. Confirm payroll policy with HR/Legal (OT rates, rate base, WPS SIF) → new policy version.
 3. Entra tenant registration (API app + SPA), group→role mapping.
 4. Document upload + payslip PDF generation to object storage.
-5. Email/Teams notification senders; assets API; final settlement policy.
+5. Email/Teams notification senders; final settlement policy.
+6. Letter PDF/QR rendering to object storage; e-signature; performance calibration; succession (Phase F).
