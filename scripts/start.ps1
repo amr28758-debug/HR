@@ -22,6 +22,10 @@ function Fail([string]$m) { Write-Host "ERR $m" -ForegroundColor Red }
 function Have([string]$c) { $null -ne (Get-Command $c -ErrorAction SilentlyContinue) }
 function DockerUp { if (-not (Have docker)) { return $false }; docker info *> $null; return $LASTEXITCODE -eq 0 }
 function PortOpen([int]$p) { try { (New-Object Net.Sockets.TcpClient).ConnectAsync('127.0.0.1', $p).Wait(1500) } catch { $false } }
+function PortOwner([int]$p) {
+  try { $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction Stop | Select-Object -First 1
+        (Get-Process -Id $c.OwningProcess -ErrorAction Stop).ProcessName } catch { '' }
+}
 
 if ($Stop) {
   if (DockerUp) { docker compose stop postgres redis *> $null; Ok 'Database containers stopped' }
@@ -32,9 +36,28 @@ if ($Stop) {
 if (-not (Have node)) { Fail 'Node.js is not installed. Install Node 22 LTS from https://nodejs.org and run this again.'; exit 1 }
 $major = [int](node -p "process.versions.node.split('.')[0]")
 if ($major -lt 20) { Fail "Node $major found; Node 22 LTS is required (https://nodejs.org)."; exit 1 }
-if (-not (Have pnpm)) { Step 'Installing pnpm'; corepack enable *> $null; corepack prepare pnpm@10.33.0 --activate *> $null }
-if (-not (Have pnpm)) { Fail 'Could not install pnpm. Run: npm install -g pnpm'; exit 1 }
+if (-not (Have pnpm)) {
+  Step 'Installing pnpm'
+  corepack enable *> $null
+  corepack prepare pnpm@10.33.0 --activate *> $null
+  if (-not (Have pnpm)) { npm install -g pnpm@10 *> $null }
+}
+if (-not (Have pnpm)) { Fail 'Could not install pnpm automatically. Run: npm install -g pnpm@10 - then start this script again.'; exit 1 }
 Ok "Node $(node -v) - pnpm $(pnpm -v)"
+
+$apiPort = if ($env:API_PORT) { [int]$env:API_PORT } else { 4000 }
+$webPort = if ($env:WEB_PORT) { [int]$env:WEB_PORT } else { 3000 }
+foreach ($p in @(@{n='API'; p=$apiPort}, @{n='web'; p=$webPort})) {
+  if (PortOpen $p.p) {
+    $owner = PortOwner $p.p
+    Fail ("Port {0} (needed by the {1}) is already in use{2}." -f $p.p, $p.n, $(if ($owner) { " by `"$owner`"" } else { '' }))
+    Write-Host '    Close that program, or start this script with different ports, e.g.:'
+    Write-Host '      $env:API_PORT=4100; $env:WEB_PORT=3100; .\scripts\start.ps1'
+    exit 1
+  }
+}
+$env:API_PORT = "$apiPort"
+$env:API_INTERNAL_URL = "http://localhost:$apiPort"
 
 # --- 2. Configuration (.env with generated secrets) --------------------------
 if (-not (Test-Path .env)) {
@@ -64,6 +87,9 @@ if ((PortOpen 5432) -and (PortOpen 6379)) {
   for ($i = 0; $i -lt 60 -and -not ((PortOpen 5432) -and (PortOpen 6379)); $i++) { Start-Sleep 1 }
   if (-not (PortOpen 5432)) { Fail 'PostgreSQL did not become ready. Check: docker compose logs postgres'; exit 1 }
   Ok 'PostgreSQL and Redis ready'
+} elseif (Have docker) {
+  Fail 'Docker is installed but not running. Start Docker Desktop, wait until it says "Engine running", then run this script again.'
+  exit 1
 } else {
   Fail 'Neither a running PostgreSQL/Redis nor Docker was found.'
   Write-Host '    Install Docker Desktop (https://docker.com/products/docker-desktop) and run this script again,'
@@ -93,32 +119,33 @@ $lan = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
 Step 'Starting the API'
 $api = Start-Process -FilePath 'pnpm' -ArgumentList 'dev:api' -WorkingDirectory $root -PassThru -NoNewWindow `
        -RedirectStandardOutput "$root\.logs\api.log" -RedirectStandardError "$root\.logs\api.err.log"
-for ($i = 0; $i -lt 90 -and -not (PortOpen 4000); $i++) { Start-Sleep 1 }
-if (-not (PortOpen 4000)) { Fail 'The API did not start. See .logs\api.log'; Get-Content "$root\.logs\api.log" -Tail 20; exit 1 }
-Ok 'API ready on http://localhost:4000 (API reference at /docs)'
+for ($i = 0; $i -lt 90 -and -not (PortOpen $apiPort); $i++) { Start-Sleep 1 }
+if (-not (PortOpen $apiPort)) { Fail 'The API did not start. Last lines of .logs\api.log:'; Get-Content "$root\.logs\api.log" -Tail 25; exit 1 }
+Ok "API ready on http://localhost:$apiPort (API reference at /docs)"
 
 Step 'Starting the web app'
 if ($Https) {
-  $web = Start-Process -FilePath 'pnpm' -ArgumentList 'exec','next','dev','-p','3000','-H','0.0.0.0','--experimental-https' `
+  $web = Start-Process -FilePath 'pnpm' -ArgumentList 'exec','next','dev','-p',"$webPort",'-H','0.0.0.0','--experimental-https' `
          -WorkingDirectory "$root\apps\web" -PassThru -NoNewWindow `
          -RedirectStandardOutput "$root\.logs\web.log" -RedirectStandardError "$root\.logs\web.err.log"
   $scheme = 'https'
 } else {
-  $web = Start-Process -FilePath 'pnpm' -ArgumentList 'dev:web' -WorkingDirectory $root -PassThru -NoNewWindow `
+  $web = Start-Process -FilePath 'pnpm' -ArgumentList 'exec','next','dev','-p',"$webPort" -WorkingDirectory "$root\apps\web" -PassThru -NoNewWindow `
          -RedirectStandardOutput "$root\.logs\web.log" -RedirectStandardError "$root\.logs\web.err.log"
   $scheme = 'http'
 }
-for ($i = 0; $i -lt 90 -and -not (PortOpen 3000); $i++) { Start-Sleep 1 }
+for ($i = 0; $i -lt 120 -and -not (PortOpen $webPort); $i++) { Start-Sleep 1 }
+if (-not (PortOpen $webPort)) { Fail 'The web app did not start. Last lines of .logs\web.log:'; Get-Content "$root\.logs\web.log" -Tail 25; exit 1 }
 Ok 'Web app ready'
 
 Write-Host ''
 Write-Host '  --------------------------------------------------------------------'
 Write-Host '   BURTPLACE WORKFORCE is running' -ForegroundColor Green
 Write-Host '  --------------------------------------------------------------------'
-Write-Host "   Open:      $scheme`://localhost:3000"
-Write-Host '   API docs:  http://localhost:4000/docs'
+Write-Host "   Open:      $scheme`://localhost:$webPort"
+Write-Host "   API docs:  http://localhost:$apiPort/docs"
 if ($Https -and $lan) {
-  Write-Host "   From a phone on the same Wi-Fi:  https://$lan`:3000/attendance"
+  Write-Host "   From a phone on the same Wi-Fi:  https://$lan`:$webPort/attendance"
   Write-Host '   (accept the self-signed certificate warning once)'
 }
 Write-Host ''
@@ -140,7 +167,7 @@ Write-Host '   Logs: .logs\api.log - .logs\web.log        Press Ctrl+C to stop'
 Write-Host '  --------------------------------------------------------------------'
 Write-Host ''
 
-Start-Process "$scheme`://localhost:3000" -ErrorAction SilentlyContinue
+Start-Process "$scheme`://localhost:$webPort" -ErrorAction SilentlyContinue
 try { Wait-Process -Id $api.Id, $web.Id } finally {
   Step 'Stopping...'
   Stop-Process -Id $api.Id, $web.Id -Force -ErrorAction SilentlyContinue
