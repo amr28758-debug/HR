@@ -58,13 +58,16 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 | Job architecture: career levels, families → functions → titles, grades with salary bands, versioned & approved job descriptions | ✅ (bands 🟡 REQUIRES HR CONFIRMATION) |
 | Compensation center: deductions, bonuses, loans + instalment schedules (reschedule/pause), increment cycles with bulk edit and application; payroll picks them up and marks APPLIED on lock | ✅ |
 | Talent: performance cycles/reviews/goals, training catalog/records/certificate expiry, confidential disciplinary register, HR notes | ✅ (lightweight) |
-| Letters: versioned templates EN/AR/bilingual, variables, numbering, letterhead, QR verification code, public verify page, revocation | ✅ (QR image rendering & PDF export ⬜) |
+| Letters: versioned templates EN/AR/bilingual, variables, numbering, letterhead, embedded QR code, public verify page, revocation | ✅ (PDF export to object storage ⬜) |
 | Document center (expiry watch-list by category), asset register | ✅ |
 | Workflow delegation, HR calendar, org chart, HR control center (NEEDS ATTENTION), HR analytics, workforce cost by project/site/department/cost center/grade/employee | ✅ |
 | Directory: table / grid / compact views, talent & compliance filters, bulk operations (preview → confirm → per-employee results) | ✅ |
 | New IA: Dashboard · People · Talent · Time · Leave · Compensation · Payroll · Documents · Assets · Workflows · Reports · Administration; ⌘K quick actions; ESS entry `/me` | ✅ |
 | Configuration center: code lists, approval chains, policies, rules | ✅ (read + code lists; policy editing via module pages) |
-| Object storage for letters/attachments, email/Teams senders, mobile push | ⬜ |
+| Final settlement calculator (configuration-driven, DRAFT until HR/Legal sign-off) on the profile | ✅ 🟡 policy REQUIRES HR/LEGAL SIGN-OFF |
+| Email (SMTP) and Teams (incoming webhook) notification channels with per-channel delivery audit | ✅ (🟡 relay/webhook REQUIRE IT CONFIGURATION) |
+| Employee search pickers (transfer, promotion, edit) | ✅ |
+| Object storage for letters/attachments, mobile push | ⬜ |
 
 ## Next steps (recommended order)
 
@@ -72,5 +75,5 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 2. Confirm payroll policy with HR/Legal (OT rates, rate base, WPS SIF) → new policy version.
 3. Entra tenant registration (API app + SPA), group→role mapping.
 4. Document upload + payslip PDF generation to object storage.
-5. Email/Teams notification senders; final settlement policy.
-6. Letter PDF/QR rendering to object storage; e-signature; performance calibration; succession (Phase F).
+5. HR/Legal sign-off of the settlement policy (`finalSettlement.signedOff`); SMTP relay and Teams webhook from IT.
+6. Letter PDF rendering to object storage; e-signature; performance calibration; succession.

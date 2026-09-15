@@ -5,6 +5,7 @@ import { ChevronDown, ArrowUpRight, Shuffle, Coins, Gift, MinusCircle, HandCoins
 import { api } from '@/lib/api';
 import { Alert, Field, Modal, cn } from '@/components/ui';
 import { fmtMoney } from '@/lib/format';
+import { EmployeePicker } from '@/components/employee-picker';
 
 /** Smart Actions menu: every entry maps to a business-action endpoint; the API decides what is allowed. */
 export type ActionDef = { key: string; label: string; requestType: string | null; enabled: boolean; reason: string | null };
@@ -77,6 +78,7 @@ export function ActionModal({ employeeId, action, onClose, onDone, gross }: { em
             <Field label="New grade">{sel('gradeId', (grades.data ?? []).map((g) => ({ v: g.id, l: `${g.code} · ${g.name}${g.minSalary ? ` (${fmtMoney(g.minSalary)}–${fmtMoney(g.maxSalary)})` : ''}` })), 'Keep current')}</Field>
             <Field label="Career level">{sel('careerLevelId', (levels.data ?? []).map((l) => ({ v: l.id, l: `${l.code} · ${l.name}` })), 'Keep current')}</Field>
             <Field label="Department">{sel('departmentId', (depts.data ?? []).map((d) => ({ v: d.id, l: d.name })), 'Keep current')}</Field>
+            <Field label="New manager"><EmployeePicker value={f.managerEmployeeId} exclude={[employeeId]} onChange={(id) => setF((x) => ({ ...x, managerEmployeeId: id ?? '' }))} /></Field>
             <Field label="New basic salary" hint={gross ? `Current gross ${fmtMoney(gross)}` : undefined}>{inp('newBasic', 'number', { min: 0, step: 50 })}</Field>
             <Field label="or increase all fixed earnings by %">{inp('percentage', 'number', { min: 0, max: 100, step: 0.5 })}</Field>
           </div>
@@ -89,7 +91,7 @@ export function ActionModal({ employeeId, action, onClose, onDone, gross }: { em
             <Field label="Project">{sel('projectId', (projects.data ?? []).map((d) => ({ v: d.id, l: `${d.code} · ${d.name}` })), 'Keep current')}</Field>
             <Field label="Site">{sel('siteId', (sites.data ?? []).map((d) => ({ v: d.id, l: d.name })), 'Keep current')}</Field>
             <Field label="Department">{sel('departmentId', (depts.data ?? []).map((d) => ({ v: d.id, l: d.name })), 'Keep current')}</Field>
-            <Field label="New manager (employee id)">{inp('managerEmployeeId', 'text', { placeholder: 'uuid — pick from directory' })}</Field>
+            <Field label="New manager"><EmployeePicker value={f.managerEmployeeId} exclude={[employeeId]} onChange={(id) => setF((x) => ({ ...x, managerEmployeeId: id ?? '' }))} /></Field>
           </div>
           <Alert tone="info">Shift assignment is re-evaluated from the effective date so the destination site's rules apply.</Alert>
           {effective}{reason}

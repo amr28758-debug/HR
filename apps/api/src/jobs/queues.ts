@@ -2,7 +2,7 @@ import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import type { FastifyInstance } from 'fastify';
 
-export type JobName = 'attendance.processAffected' | 'attendance.processRange' | 'attendance.reconcile' | 'timesheets.generate' | 'leave.accrual' | 'documents.expiryScan' | 'devices.healthScan' | 'biometric.sync' | 'payroll.calculate';
+export type JobName = 'notifications.deliver' | 'attendance.processAffected' | 'attendance.processRange' | 'attendance.reconcile' | 'timesheets.generate' | 'leave.accrual' | 'documents.expiryScan' | 'devices.healthScan' | 'biometric.sync' | 'payroll.calculate';
 export interface JobPayloads {
   'attendance.processAffected': { pairs: { employeeId: string; date: string }[] };
   'attendance.processRange': { from: string; to: string; employeeIds?: string[] };
@@ -10,6 +10,7 @@ export interface JobPayloads {
   'timesheets.generate': { year: number; month: number };
   'leave.accrual': { year: number; month: number };
   'documents.expiryScan': Record<string, never>;
+  'notifications.deliver': Record<string, never>;
   'devices.healthScan': Record<string, never>;
   'biometric.sync': Record<string, never>;
   'payroll.calculate': { runId: string };
@@ -67,6 +68,7 @@ export class JobQueues {
     await this.queue.add('leave.accrual', { year: 0, month: 0 }, { repeat: { pattern: '0 1 1 * *', tz }, jobId: 'cron-accrual' });
     await this.queue.add('documents.expiryScan', {}, { repeat: { pattern: '0 7 * * *', tz }, jobId: 'cron-documents' });
     await this.queue.add('devices.healthScan', {}, { repeat: { pattern: '*/10 * * * *', tz }, jobId: 'cron-devices' });
+    await this.queue.add('notifications.deliver', {}, { repeat: { pattern: '*/2 * * * *', tz }, jobId: 'cron-notifications' });
     await this.queue.add('biometric.sync', {}, { repeat: { pattern: '*/5 * * * *', tz }, jobId: 'cron-biometric' });
   }
 

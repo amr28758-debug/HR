@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/shell';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/providers';
 import { Alert, Card, Field, PageHeader, TableSkeleton } from '@/components/ui';
+import { EmployeePicker } from '@/components/employee-picker';
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) { const { id } = use(params); return <AppShell><Edit id={id} /></AppShell>; }
 
@@ -43,7 +44,7 @@ function Edit({ id }: { id: string }) {
         <Card title="Employment & organisation"><div className="grid gap-3 sm:grid-cols-2">{EMPLOYMENT.map(([k, l, t]) => <Field key={k} label={l}>{inp(k, t)}</Field>)}
           <Field label="Employment type"><select className="input" value={f.employmentType ?? ''} onChange={set('employmentType')}>{['FULL_TIME', 'PART_TIME', 'CONTRACT', 'TEMPORARY', 'INTERN', 'CONSULTANT'].map((g) => <option key={g}>{g}</option>)}</select></Field>
           <Field label="Department">{sel('departmentId', depts.data ?? [], (o) => o.name)}</Field><Field label="Designation">{sel('designationId', desigs.data ?? [], (o) => o.title)}</Field><Field label="Site">{sel('siteId', sites.data ?? [], (o) => o.name)}</Field><Field label="Project">{sel('projectId', projects.data ?? [], (o) => `${o.code} · ${o.name}`)}</Field><Field label="Cost center">{sel('costCenterId', ccs.data ?? [], (o) => `${o.code}${o.name ? ` · ${o.name}` : ''}`)}</Field>
-          <Field label="Manager (employee id)">{inp('managerEmployeeId')}</Field>
+          <Field label="Manager" className="sm:col-span-2"><EmployeePicker value={f.managerEmployeeId} exclude={[id]} onChange={(mid) => setF({ ...f, managerEmployeeId: mid ?? '' })} /></Field>
           <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={!!f.isOfficeStaff} onChange={set('isOfficeStaff')} />Office staff (gets IT onboarding items)</label>
           <Field label="Reason for change" className="sm:col-span-2">{inp('reason')}</Field></div></Card>
       </div>

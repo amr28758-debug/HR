@@ -69,7 +69,7 @@ function Profile({ id }: { id: string }) {
         {tab === 'personal' && <Card title="Personal information"><KeyValue cols={3} items={[{ k: 'First name', v: d.firstName }, { k: 'Middle name', v: d.middleName }, { k: 'Last name', v: d.lastName }, { k: 'Arabic name', v: d.fullNameAr }, { k: 'Gender', v: humanStatus(d.gender) }, { k: 'Date of birth', v: fmtDate(d.dateOfBirth) }, { k: 'Nationality', v: d.nationality }, { k: 'Marital status', v: humanStatus(d.maritalStatus) }, { k: 'Mobile', v: d.mobile }, { k: 'Work email', v: d.workEmail }, { k: 'Personal email', v: d.personalEmail }, { k: 'Emergency contact', v: d.emergencyContactName ? `${d.emergencyContactName} (${d.emergencyContactRelation ?? '—'}) ${d.emergencyContactPhone ?? ''}` : null }]} /></Card>}
         {tab === 'employment' && <Employment d={d} id={id} />}
         {tab === 'job' && <JobTab d={d} sm={sm} id={id} />}
-        {tab === 'compensation' && <CompensationTab id={id} />}
+        {tab === 'compensation' && <CompensationTab id={id} status={h.status} lastWorkingDate={h.lastWorkingDate} />}
         {tab === 'attendance' && <AttendanceTab id={id} />}
         {tab === 'leave' && <LeaveTab id={id} />}
         {tab === 'timesheet' && <TimesheetTab id={id} />}
@@ -148,7 +148,7 @@ function OrgMini({ id }: { id: string }) {
   return <div className="flex flex-wrap gap-3">{me.children.length ? me.children.map((c: any) => <Link key={c.id} href={`/employees/${c.id}`} className="flex items-center gap-3 rounded-xl border px-3 py-2 transition hover:bg-brand-soft/50"><Avatar name={c.name} size="sm" /><span><span className="block text-sm font-medium">{c.name}</span><span className="block text-[11px] text-muted">{c.designation ?? '—'}{c.totalReports ? ` · ${c.totalReports} reports` : ''}</span></span></Link>) : <p className="text-sm text-muted">No direct reports.</p>}<Link href={`/people/org-chart?rootId=${id}`} className="btn-ghost btn-sm self-center">Open org chart <ChevronRight size={14} /></Link></div>;
 }
 
-function CompensationTab({ id }: { id: string }) {
+function CompensationTab({ id, status, lastWorkingDate }: { id: string; status: string; lastWorkingDate: string | null }) {
   const q = useQuery({ queryKey: ['compensation', id], queryFn: () => api<any>(`/api/v1/employees/${id}/compensation`) });
   const [open, setOpen] = useState<string | null>(null);
   if (q.isLoading) return <TableSkeleton />;
@@ -166,7 +166,30 @@ function CompensationTab({ id }: { id: string }) {
         <Card title="Bonuses" padded={false}>{c.bonuses.length ? <table className="data"><thead><tr><th>Type</th><th>Amount</th><th>Period</th><th>Status</th></tr></thead><tbody>{c.bonuses.map((b: any) => <tr key={b.id}><td>{humanStatus(b.bonusType)}<span className="block text-[11px] text-muted">{b.reason}</span></td><td>{b.amount !== null ? fmtMoney(b.amount) : `${b.percentage}% of basic`}</td><td>{b.period}</td><td><Badge status={b.status} /></td></tr>)}</tbody></table> : <EmptyState />}</Card>
         <Card title="Deductions" padded={false}>{c.deductions.length ? <table className="data"><thead><tr><th>Component</th><th>Amount</th><th>Period</th><th>Status</th></tr></thead><tbody>{c.deductions.map((b: any) => <tr key={b.id}><td>{humanStatus(b.componentCode)}<span className="block text-[11px] text-muted">{b.reason}</span></td><td>{fmtMoney(b.amount)}</td><td>{b.period}</td><td><Badge status={b.status} /></td></tr>)}</tbody></table> : <EmptyState />}</Card>
       </div>
+      <SettlementCard id={id} status={status} lastWorkingDate={lastWorkingDate} />
     </div>
+  );
+}
+
+/** Final settlement preview — DRAFT until the settlement policy is signed off by HR/Legal. */
+function SettlementCard({ id, status, lastWorkingDate }: { id: string; status: string; lastWorkingDate: string | null }) {
+  const { can } = useAuth();
+  const [lwd, setLwd] = useState(lastWorkingDate ?? '');
+  const [run, setRun] = useState(false);
+  const q = useQuery({ queryKey: ['settlement', id, lwd], queryFn: () => api<any>(`/api/v1/employees/${id}/final-settlement${qs({ lastWorkingDate: lwd || undefined })}`), enabled: run && (!!lwd || !!lastWorkingDate), retry: false });
+  const exiting = ['RESIGNED', 'TERMINATED', 'CLEARANCE'].includes(status);
+  if (!can('payroll:read') && !can('salary:read')) return null;
+  return (
+    <Card title="Final settlement" subtitle={exiting ? 'End-of-service statement for this exit' : 'Preview what an exit would cost on a given date'} actions={<><input type="date" className="input h-8 w-40" value={lwd} onChange={(e) => { setLwd(e.target.value); setRun(false); }} /><button className="btn-secondary btn-sm" disabled={!lwd} onClick={() => setRun(true)}>Calculate</button></>}>
+      {q.isError && <Alert tone="danger">{(q.error as Error).message}</Alert>}
+      {q.data ? <div className="space-y-3">
+        <Alert tone={q.data.policySignedOff ? 'info' : 'warning'}>{q.data.policySignedOff ? 'Calculated with the signed-off settlement policy.' : 'DRAFT — settlement policy not yet signed off by HR/Legal. Figures are indicative and must not be paid out.'}</Alert>
+        <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-xl bg-surface-2/60 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Service</p><p className="mt-1 text-lg font-bold">{q.data.service.years}y {q.data.service.months}m {q.data.service.days}d</p><p className="text-[11px] text-muted">{q.data.service.totalDays} days counted</p></div><div className="rounded-xl bg-surface-2/60 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Earnings</p><p className="mt-1 text-lg font-bold text-success">{fmtMoney(q.data.totalEarnings)}</p></div><div className="rounded-xl bg-surface-2/60 p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Deductions</p><p className="mt-1 text-lg font-bold text-danger">{fmtMoney(q.data.totalDeductions)}</p></div><div className="rounded-xl bg-accent-soft p-3"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Net settlement</p><p className="mt-1 text-lg font-bold text-accent">{fmtMoney(q.data.net)}</p></div></div>
+        <table className="data"><thead><tr><th>Item</th><th>Basis</th><th className="text-end">Amount</th></tr></thead><tbody>{q.data.lines.map((l: any) => <tr key={l.code}><td className="font-medium">{l.label}</td><td className="text-xs text-muted">{l.detail}</td><td className={cn('text-end tabular-nums font-semibold', l.kind === 'DEDUCTION' && 'text-danger')}>{l.kind === 'DEDUCTION' ? '−' : ''}{fmtMoney(l.amount)}</td></tr>)}</tbody></table>
+        {q.data.warnings.map((w: string) => <p key={w} className="text-xs text-warning">⚠ {w}</p>)}
+        <p className="text-[11px] text-muted">Inputs: basic {fmtMoney(q.data.inputs.basicSalary)} · unpaid leave {q.data.inputs.unpaidLeaveDays} d · leave balance {q.data.inputs.leaveBalanceDays} d · loans {fmtMoney(q.data.inputs.outstandingLoans)} · notice shortfall {q.data.inputs.noticeShortfallDays} d{q.data.inputs.finalPeriodRun ? ` · final run ${q.data.inputs.finalPeriodRun}` : ' · final period not yet run'}</p>
+      </div> : <p className="text-sm text-muted">Pick a last working date and calculate. Gratuity bands, caps and encashment basis come from the payroll policy (Configuration center).</p>}
+    </Card>
   );
 }
 

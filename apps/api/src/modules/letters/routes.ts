@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { getEnv } from '@burtplace/config';
+import QRCode from 'qrcode';
 import { idParam, errorSchema, offset, pageMeta, paginated, paginationQuery } from '../../lib/pagination.js';
 import { badRequest, forbidden, notFound } from '../../plugins/errors.js';
 import { hasPermission, requireAuth, requirePermission } from '../../plugins/rbac.js';
@@ -33,7 +34,8 @@ export const letterRoutes: FastifyPluginAsync = async (app) => {
     if (!t) throw notFound('Template', req.params.id);
     const vars = await letterVariables(app.db, req.body.employeeId, { addressee: req.body.addressee, purpose: req.body.purpose, company: COMPANY });
     const lang = req.body.language ?? t.language;
-    const html = letterDocument({ htmlEn: lang !== 'ar' && t.body_en ? renderTemplate(t.body_en, vars) : null, htmlAr: lang !== 'en' && t.body_ar ? renderTemplate(t.body_ar, vars) : null, letterNo: 'PREVIEW', verificationCode: 'PREVIEW', verifyUrl: `${env.WEB_PUBLIC_URL}/verify`, company: COMPANY, signatoryName: t.signatory_name, signatoryTitle: t.signatory_title, signatoryTitleAr: t.signatory_title_ar });
+    const verifyUrl = `${env.WEB_PUBLIC_URL}/verify/PREVIEW`;
+  const html = letterDocument({ qrSvg: null, htmlEn: lang !== 'ar' && t.body_en ? renderTemplate(t.body_en, vars) : null, htmlAr: lang !== 'en' && t.body_ar ? renderTemplate(t.body_ar, vars) : null, letterNo: 'PREVIEW', verificationCode: 'PREVIEW', verifyUrl: `${env.WEB_PUBLIC_URL}/verify`, company: COMPANY, signatoryName: t.signatory_name, signatoryTitle: t.signatory_title, signatoryTitleAr: t.signatory_title_ar });
     return { html, variables: vars };
   });
 
@@ -90,7 +92,9 @@ export async function issueLetter(app: import('fastify').FastifyInstance, input:
   const lang = input.language ?? t.language;
   const letterNo = await nextLetterNo(app.db);
   const code = verificationCode();
-  const html = letterDocument({ htmlEn: lang !== 'ar' && t.body_en ? renderTemplate(t.body_en, vars) : null, htmlAr: lang !== 'en' && t.body_ar ? renderTemplate(t.body_ar, vars) : null, letterNo, verificationCode: code, verifyUrl: `${env.WEB_PUBLIC_URL}/verify/${code}`, company: COMPANY, signatoryName: t.signatory_name, signatoryTitle: t.signatory_title, signatoryTitleAr: t.signatory_title_ar });
+  const verifyUrl = `${env.WEB_PUBLIC_URL}/verify/${code}`;
+  const qrSvg = await QRCode.toString(verifyUrl, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' });
+  const html = letterDocument({ qrSvg, htmlEn: lang !== 'ar' && t.body_en ? renderTemplate(t.body_en, vars) : null, htmlAr: lang !== 'en' && t.body_ar ? renderTemplate(t.body_ar, vars) : null, letterNo, verificationCode: code, verifyUrl, company: COMPANY, signatoryName: t.signatory_name, signatoryTitle: t.signatory_title, signatoryTitleAr: t.signatory_title_ar });
   const g = await app.db.insertInto('generated_letters').values({ letter_no: letterNo, verification_code: code, template_id: t.id, employee_id: input.employeeId, language: lang, variables: JSON.stringify(vars), rendered_html: html, addressee: input.addressee ?? null, purpose: input.purpose ?? null, status: 'ISSUED', hr_request_id: input.hrRequestId, issued_by: input.userId, issued_at: new Date() }).returning('id').executeTakeFirstOrThrow();
   await addTimeline(app.db, { employeeId: input.employeeId, type: 'LETTER', title: `${t.name} issued`, description: `${letterNo}${input.purpose ? ` · ${input.purpose}` : ''}`, refType: 'generated_letter', refId: g.id, actorUserId: input.userId, visibility: 'EMPLOYEE' });
   await app.audit(null, { action: 'letters.generate', entityType: 'generated_letter', entityId: g.id, newValue: { employeeId: input.employeeId, template: t.code, letterNo }, approvalRef: input.hrRequestId });

@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { sql } from 'kysely';
-import { nextStatuses } from '@burtplace/core';
+import { EXAMPLE_SETTLEMENT_POLICY, calculateSettlement, nextStatuses, type SettlementPolicy } from '@burtplace/core';
 import { errorSchema, idParam } from '../../lib/pagination.js';
 import { badRequest, forbidden, notFound } from '../../plugins/errors.js';
 import { hasPermission, requireAuth, requirePermission, resolveScope } from '../../plugins/rbac.js';
@@ -197,6 +197,36 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
     const bonuses = (await app.db.selectFrom('employee_bonuses').selectAll().where('employee_id', '=', req.params.id).orderBy('created_at', 'desc').execute()).map((b) => ({ id: b.id, bonusType: b.bonus_type, amount: b.amount === null ? null : Number(b.amount), percentage: b.percentage === null ? null : Number(b.percentage), reason: b.reason, period: per(b.period_year, b.period_month), status: b.status }));
     const loans = await Promise.all((await app.db.selectFrom('employee_loans').selectAll().where('employee_id', '=', req.params.id).orderBy('created_at', 'desc').execute()).map(async (l) => { const ins = await app.db.selectFrom('loan_installments').select(['status']).where('loan_id', '=', l.id).execute(); return { id: l.id, loanType: l.loan_type, principal: Number(l.principal), installment: Number(l.installment), outstanding: Number(l.outstanding), startPeriod: String(l.start_period).slice(0, 7), status: l.status, paidInstallments: ins.filter((i) => i.status === 'DEDUCTED').length, totalInstallments: ins.length }; }));
     return { versions, grade, deductions, bonuses, loans };
+  });
+
+  // ── Final settlement preview (end of service) ──
+  const settlementLine = z.object({ code: z.string(), label: z.string(), kind: z.string(), amount: z.number(), detail: z.string() });
+  r.get('/:id/final-settlement', { preHandler: requirePermission('payroll:read', 'salary:read', 'salary:read:own'), schema: { tags: ['employees'], summary: 'Final settlement statement (DRAFT until the settlement policy is signed off by HR/Legal). Inputs come from salary, leave, loans, deductions, bonuses and the final payroll period.', params: idParam, querystring: z.object({ lastWorkingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), exitType: z.enum(['RESIGNATION', 'TERMINATION', 'END_OF_CONTRACT', 'OTHER']).optional() }), response: { 200: z.object({ status: z.string(), policySignedOff: z.boolean(), employee: z.object({ id: z.string(), employeeNo: z.string(), name: z.string(), status: z.string(), joiningDate: z.string().nullable(), lastWorkingDate: z.string(), exitType: z.string() }), inputs: z.record(z.unknown()), service: z.record(z.unknown()), dailyRate: z.object({ gratuity: z.number(), encashment: z.number() }), lines: z.array(settlementLine), totalEarnings: z.number(), totalDeductions: z.number(), net: z.number(), warnings: z.array(z.string()), trace: z.record(z.unknown()) }), 422: errorSchema } } }, async (req) => {
+    const p = requireAuth(req);
+    if (!hasPermission(p, 'payroll:read') && !hasPermission(p, 'salary:read') && p.employeeId !== req.params.id) throw notFound('Employee', req.params.id);
+    const e = await app.db.selectFrom('employees').select(['id', 'employee_no', 'full_name_en', 'status', 'joining_date', 'last_working_date', 'resignation_date', 'notice_period_days', 'exit_reason']).where('id', '=', req.params.id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!e) throw notFound('Employee', req.params.id);
+    const lwd = req.query.lastWorkingDate ?? e.last_working_date;
+    if (!lwd) throw badRequest('lastWorkingDate is required (no last working date on file yet)');
+    if (!e.joining_date) throw badRequest('Employee has no joining date');
+    const { activePolicy } = await import('../payroll/service.js');
+    const pol = await activePolicy(app.db, lwd);
+    const policy = ((pol?.config as any)?.finalSettlement as SettlementPolicy | undefined) ?? EXAMPLE_SETTLEMENT_POLICY;
+    const ss = await app.db.selectFrom('employee_salary_structures').select(['basic_salary', 'gross_salary']).where('employee_id', '=', e.id).orderBy('version', 'desc').executeTakeFirst();
+    if (!ss) throw badRequest('Employee has no salary structure');
+    const unpaid = Number((await app.db.selectFrom('leave_requests as l').innerJoin('leave_types as t', 't.id', 'l.leave_type_id').select((eb) => eb.fn.sum<number>('l.total_days').as('d')).where('l.employee_id', '=', e.id).where('l.status', '=', 'APPROVED').where('t.is_paid', '=', false).executeTakeFirstOrThrow()).d ?? 0);
+    const bal = await app.db.selectFrom('leave_balances as b').innerJoin('leave_types as t', 't.id', 'b.leave_type_id').select('b.balance_days').where('b.employee_id', '=', e.id).where('t.code', '=', 'ANNUAL').where('b.period_year', '=', Number(lwd.slice(0, 4))).executeTakeFirst();
+    const loans = Number((await app.db.selectFrom('employee_loans').select((eb) => eb.fn.sum<number>('outstanding').as('o')).where('employee_id', '=', e.id).where('status', 'in', ['ACTIVE', 'PAUSED']).executeTakeFirstOrThrow()).o ?? 0);
+    const deds = Number((await app.db.selectFrom('employee_deductions').select((eb) => eb.fn.sum<number>('amount').as('a')).where('employee_id', '=', e.id).where('status', '=', 'APPROVED').executeTakeFirstOrThrow()).a ?? 0);
+    const bon = Number((await app.db.selectFrom('employee_bonuses').select((eb) => eb.fn.sum<number>('amount').as('a')).where('employee_id', '=', e.id).where('status', '=', 'APPROVED').where('is_recurring', '=', false).executeTakeFirstOrThrow()).a ?? 0);
+    const finalRun = await app.db.selectFrom('payroll_employees as pe').innerJoin('payroll_runs as r', 'r.id', 'pe.payroll_run_id').select(['pe.net_salary', 'r.status', 'r.code']).where('pe.employee_id', '=', e.id).where('r.period_year', '=', Number(lwd.slice(0, 4))).where('r.period_month', '=', Number(lwd.slice(5, 7))).executeTakeFirst();
+    let noticeShortfall = 0;
+    if (e.notice_period_days && e.resignation_date) { const served = Math.round((new Date(lwd).getTime() - new Date(e.resignation_date).getTime()) / 864e5); noticeShortfall = Math.max(0, e.notice_period_days - served); }
+    const exitType = req.query.exitType ?? (e.status === 'TERMINATED' ? 'TERMINATION' : 'RESIGNATION');
+    const inputs = { basicSalary: Number(ss.basic_salary), grossSalary: Number(ss.gross_salary), unpaidLeaveDays: unpaid, leaveBalanceDays: bal ? Number(bal.balance_days) : 0, outstandingLoans: loans, pendingDeductions: deds, pendingBonuses: bon, noticeShortfallDays: noticeShortfall, finalPeriodNet: finalRun ? Number(finalRun.net_salary) : undefined, finalPeriodRun: finalRun ? `${finalRun.code} (${finalRun.status})` : null, exitType };
+    const res = calculateSettlement(policy, { joiningDate: e.joining_date, lastWorkingDate: lwd, ...inputs, exitType: exitType as any });
+    await app.audit(req, { action: 'employee.final_settlement.preview', entityType: 'employee', entityId: e.id, newValue: { lastWorkingDate: lwd, net: res.net, status: res.status } });
+    return { status: res.status, policySignedOff: policy.signedOff, employee: { id: e.id, employeeNo: e.employee_no, name: e.full_name_en, status: e.status, joiningDate: e.joining_date, lastWorkingDate: lwd, exitType }, inputs, service: res.service as unknown as Record<string, unknown>, dailyRate: res.dailyRate, lines: res.lines, totalEarnings: res.totalEarnings, totalDeductions: res.totalDeductions, net: res.net, warnings: res.warnings, trace: res.trace };
   });
 
   // ── Business actions → HR requests ──

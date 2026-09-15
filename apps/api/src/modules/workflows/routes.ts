@@ -62,6 +62,7 @@ export const workflowRoutes: FastifyPluginAsync = async (app) => {
       if (res.entityType === 'hr_request') { const { rejectHrRequest } = await import('../hr-requests/service.js'); await rejectHrRequest(app.db, res.entityId, p.userId, req.body.comment); }
       if (res.entityType === 'leave_request') { const { applyLeaveDecision } = await import('../leave/service.js'); await applyLeaveDecision(app, res.entityId, 'REJECTED'); }
     }
+    void app.queues.add('notifications.deliver', {}).catch(() => undefined);
     await app.audit(req, { action: `workflow.task.${req.body.decision.toLowerCase()}`, entityType: res.entityType, entityId: res.entityId, newValue: { taskId: req.params.id, comment: req.body.comment }, approvalRef: req.params.id });
     return { instanceStatus: res.instanceStatus, entityType: res.entityType, entityId: res.entityId };
   });

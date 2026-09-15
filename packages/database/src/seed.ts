@@ -192,6 +192,14 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
       earlyLeaveDeduction: { enabled: true, perMinute: true },
       absenceDeductionDays: 1,
       rounding: 2,
+      // End-of-service settlement rules — COMPANY EXAMPLES, signedOff=false until HR/Legal confirm against UAE Labour Law.
+      finalSettlement: {
+        signedOff: false,
+        gratuity: { basis: 'BASIC', bands: [{ uptoYears: 5, daysPerYear: 21 }, { uptoYears: null, daysPerYear: 30 }], minServiceYears: 1, capMonths: 24, proRata: true, daysInMonthDivisor: 30 },
+        leaveEncashment: { enabled: true, basis: 'BASIC', daysInMonthDivisor: 30 },
+        excludeUnpaidLeaveFromService: true,
+        recoverNoticeShortfall: true,
+      },
       formulas: {
         DAILY_RATE: 'rate_base / days_in_month_divisor',
         HOURLY_RATE: 'daily_rate / hours_per_day',

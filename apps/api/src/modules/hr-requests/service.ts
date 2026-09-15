@@ -109,6 +109,7 @@ export async function createHrRequest(app: FastifyInstance, input: CreateHrReque
     const inst = await db.selectFrom('workflow_instances').select('status').where('id', '=', wf).executeTakeFirstOrThrow();
     if (inst.status === 'APPROVED') { await db.updateTable('hr_requests').set({ status: 'APPROVED', decided_by: input.requestedBy, decided_at: new Date() }).where('id', '=', row.id).execute(); status = (await applyHrRequest(app, row.id, input.requestedBy)).status; }
   }
+  void app.queues.add('notifications.deliver', {}).catch(() => undefined);
   return { id: row.id, requestNo, status, workflowInstanceId: wf };
 }
 

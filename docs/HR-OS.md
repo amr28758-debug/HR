@@ -104,7 +104,7 @@ Delegation: `POST /workflows/delegations` (from/to/dates). Delegates see the del
 
 Templates (`letter_templates`, versioned, EN/AR/bilingual, `requires_approval`) render with
 `{{path}}` variables (`employee.*`, `salary.*`, `letter.*`, `company.*`, `change.*`). Each issued
-letter gets a number `BP-LTR-YYYY-000001`, a verification code, letterhead HTML with a QR placeholder
+letter gets a number `BP-LTR-YYYY-000001`, a verification code, letterhead HTML with an embedded SVG QR code (encoding the verify URL)
 and the public page `/verify/<code>` (`GET /letters/verify/:code`). Revocation flips the verification
 result. Employees may *request* letters (LETTER request); `letters:generate` issues instantly unless the
 template requires approval.
@@ -125,6 +125,35 @@ template requires approval.
 
 `/assets`: register, assign, return (with damage flag → raise an ASSET_DAMAGE deduction from the
 profile). `GET /assets/employee/:id` feeds the Assets tab and the clearance checklist.
+
+## 7b. Final settlement (end of service)
+
+`GET /employees/:id/final-settlement?lastWorkingDate&exitType` returns an itemised statement computed by
+`@burtplace/core` `calculateSettlement` from the payroll policy block `finalSettlement`:
+
+```json
+{ "signedOff": false,
+  "gratuity": { "basis": "BASIC", "bands": [{ "uptoYears": 5, "daysPerYear": 21 }, { "uptoYears": null, "daysPerYear": 30 }],
+                "minServiceYears": 1, "capMonths": 24, "proRata": true, "daysInMonthDivisor": 30 },
+  "leaveEncashment": { "enabled": true, "basis": "BASIC", "daysInMonthDivisor": 30 },
+  "excludeUnpaidLeaveFromService": true, "recoverNoticeShortfall": true }
+```
+
+Inputs are read live: latest salary, approved unpaid leave, annual-leave balance, outstanding loans/advances,
+approved unapplied deductions and bonuses, notice shortfall (notice days vs. resignation → last working date)
+and the final period's payroll net if that run exists. The statement is **DRAFT** (warning on every result)
+until HR/Legal set `signedOff: true` in a new policy version — the engine ships no statutory values of its own.
+Termination cases add a warning that forfeiture/reduction is a legal determination. The card lives on the
+profile's Compensation tab (payroll:read / salary:read).
+
+## 7c. Notifications
+
+In-app notifications are always written. `apps/api/src/notifications/channels.ts` fans them out to
+**email** (SMTP via nodemailer, when `SMTP_HOST` is set) and **Microsoft Teams** (incoming webhook `text`
+payload for `approval.*` events, when `TEAMS_WEBHOOK_URL` is set). Delivery runs through the
+`notifications.deliver` job (every 2 minutes and right after request creation / decisions); every attempt is
+stored as its own `notifications` row per channel with `sent_at` or `send_error`, so delivery is auditable and
+nothing is fabricated when a channel is unconfigured.
 
 ## 8. Data privacy
 

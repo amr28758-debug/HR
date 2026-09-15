@@ -40,7 +40,7 @@ export async function nextLetterNo(db: Kysely<DB>): Promise<string> {
 export const verificationCode = () => randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, 'X').slice(0, 12).toUpperCase();
 
 /** Wrap rendered body in a letterhead document (EN / AR / bilingual). */
-export function letterDocument(opts: { htmlEn: string | null; htmlAr: string | null; letterNo: string; verificationCode: string; verifyUrl: string; company: { name: string; nameAr: string }; signatoryName?: string | null; signatoryTitle?: string | null; signatoryTitleAr?: string | null }): string {
+export function letterDocument(opts: { htmlEn: string | null; htmlAr: string | null; letterNo: string; verificationCode: string; verifyUrl: string; qrSvg?: string | null; company: { name: string; nameAr: string }; signatoryName?: string | null; signatoryTitle?: string | null; signatoryTitleAr?: string | null }): string {
   const sig = (title: string | null | undefined, name: string | null | undefined, rtl = false) => `<div class="sig" ${rtl ? 'dir="rtl"' : ''}><div class="line"></div><b>${name || '________________'}</b><br><span>${title ?? ''}</span></div>`;
   const en = opts.htmlEn ? `<section class="en">${opts.htmlEn}${sig(opts.signatoryTitle, opts.signatoryName)}</section>` : '';
   const ar = opts.htmlAr ? `<section class="ar" dir="rtl">${opts.htmlAr}${sig(opts.signatoryTitleAr, opts.signatoryName, true)}</section>` : '';
@@ -51,11 +51,11 @@ export function letterDocument(opts: { htmlEn: string | null; htmlAr: string | n
   h3{color:#152D58;letter-spacing:.06em;margin:18px 0 10px}table{border-collapse:collapse;margin:10px 0}td{padding:6px 14px 6px 0;border-bottom:1px solid #E5E3DD}
   section.ar{margin-top:40px;border-top:1px dashed #E5E3DD;padding-top:24px}.sig{margin-top:44px;width:260px}.sig .line{border-top:1px solid #161B26;margin-bottom:6px}
   .foot{margin-top:48px;border-top:1px solid #E5E3DD;padding-top:10px;font-size:11px;color:#677080;display:flex;justify-content:space-between;align-items:center}
-  .qr{width:64px;height:64px;border:1px solid #E5E3DD;display:grid;place-items:center;font-size:9px;text-align:center;color:#152D58}
+  .qr{width:84px;text-align:center;font-size:9px;color:#152D58}.qr svg{width:72px;height:72px;display:block;margin:0 auto 2px}
   @media print{body{padding:24px}}
   </style></head><body>
   <div class="head"><div><h1>${opts.company.name}</h1><small>${opts.company.nameAr}</small></div><div class="meta">Ref: <b>${opts.letterNo}</b><br>Verification: ${opts.verificationCode}</div></div>
   ${en}${ar}
-  <div class="foot"><span>Verify this letter at ${opts.verifyUrl}</span><div class="qr">QR<br>${opts.verificationCode}</div></div>
+  <div class="foot"><span>Verify this letter at ${opts.verifyUrl}</span><div class="qr">${opts.qrSvg ?? ''}${opts.verificationCode}</div></div>
   </body></html>`;
 }

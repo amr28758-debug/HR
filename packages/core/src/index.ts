@@ -7,3 +7,4 @@ export * from './formula-engine.js';
 export * from './payroll-engine.js';
 export * from './lifecycle.js';
 export * from './leave-days.js';
+export * from './settlement.js';

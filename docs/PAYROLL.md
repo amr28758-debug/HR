@@ -53,3 +53,7 @@ Each register row stores a `calculation_trace` (all variables, formulas and poli
 ## Exceptions surfaced per employee
 
 `NO_SALARY_STRUCTURE`, `NO_TIMESHEET`, `NO_ATTENDANCE_DATA`, `MISSING_IBAN`, missing-punch days, unapproved OT excluded, deductions exceeding earnings (net floored at 0).
+
+## Final settlement
+
+The policy block `finalSettlement` (see `docs/HR-OS.md` §7b) drives `GET /employees/:id/final-settlement`. Values seeded are company examples with `signedOff: false`; publish a new policy version with `signedOff: true` only after HR/Legal confirmation.

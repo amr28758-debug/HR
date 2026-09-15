@@ -52,6 +52,15 @@ export const envSchema = z.object({
   VYOM_PASSWORD: z.string().optional(),
   VYOM_POLL_INTERVAL_SECONDS: z.coerce.number().int().positive().default(60),
 
+  // Notification channels (optional). Email needs an SMTP relay from IT; Teams needs an incoming-webhook URL created by the Teams admin.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: boolish.default('false'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('Burtplace Workforce <hr-noreply@burtplace.ae>'),
+  TEAMS_WEBHOOK_URL: z.string().url().optional(),
+
   COMPANY_NAME: z.string().default('Burtplace General Contracting'),
   COMPANY_TIMEZONE: z.string().default('Asia/Dubai'),
   DEFAULT_LOCALE: z.enum(['en', 'ar']).default('en'),
