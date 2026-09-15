@@ -1,0 +1,14 @@
+# Keep the build context small and never bake local state or secrets into an image.
+node_modules
+**/node_modules
+.git
+.env
+.env.*
+!.env.example
+.logs
+**/dist
+**/.next
+**/.turbo
+apps/web/public/models
+coverage
+*.log

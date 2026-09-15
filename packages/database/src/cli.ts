@@ -24,6 +24,14 @@ async function main() {
         await seed(pool, (m) => console.log(m));
         break;
       }
+      case 'ensure': {
+        // Idempotent first-run setup used by scripts/start.sh: migrate, then seed only when the database is still empty.
+        await migrate(pool, (m) => console.log(m));
+        const { rows } = await pool.query<{ n: string }>(`SELECT count(*)::text AS n FROM employees`);
+        if (Number(rows[0]?.n ?? 0) > 0) console.log(`database already has ${rows[0]!.n} employees — skipping seed`);
+        else await seed(pool, (m) => console.log(m));
+        break;
+      }
       case 'reset': {
         if (env.NODE_ENV === 'production') throw new Error('refusing to reset a production database');
         await resetDatabase(pool);

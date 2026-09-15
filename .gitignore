@@ -13,3 +13,4 @@ coverage/
 storage/
 # Face-recognition model files are copied from @vladmandic/human at build time (scripts/copy-face-models.mjs)
 apps/web/public/models/
+.logs/

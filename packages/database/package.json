@@ -5,7 +5,12 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -14,7 +19,8 @@
     "seed": "tsx src/cli.ts seed",
     "reset": "tsx src/cli.ts reset",
     "test": "echo 'covered by api integration tests'",
-    "lint": "echo 'ok'"
+    "lint": "echo 'ok'",
+    "ensure": "tsx src/cli.ts ensure"
   },
   "dependencies": {
     "@burtplace/config": "workspace:*",

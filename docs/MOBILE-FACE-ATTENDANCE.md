@@ -224,7 +224,11 @@ works). To add a vendor SDK or a PAD-certified engine: implement the interface, 
 * Web: `scripts/copy-face-models.mjs` (pre-dev/pre-build) copies the 5 browser models (~6 MB) to `public/models` — served
   from our origin, no CDN. Only the WASM fallback fetches `tfjs-backend-wasm` from jsdelivr (configurable in
   `face-client.ts`); WebGL is the normal path.
-* HTTPS is mandatory (camera + geolocation are blocked on plain HTTP except `localhost`).
+* HTTPS is mandatory (camera + geolocation are blocked on plain HTTP except `localhost`). To try the terminal from a
+  phone during development, run `./scripts/start.sh --https` (Windows: `scripts\start.ps1 -Https`) and open
+  `https://<your-computer-ip>:3000/attendance`, accepting the self-signed certificate once. If a browser still refuses
+  the camera because the certificate is not trusted, install a trusted certificate (mkcert or the company CA) — the
+  terminal pages themselves need no other change.
 * Browser support: Safari iOS 15+, Chrome/Edge Android 90+, desktop Chrome/Edge/Firefox/Safari. In-app browsers (Teams,
   WhatsApp) may block the camera — open in the system browser.
 * Kiosk hardware: any Android tablet / iPad in a stand with a front camera at face height, screen always on, browser in

@@ -15,7 +15,28 @@ Employee → Employment → Shift → Attendance → Leave / OT → Timesheet �
 | Auth | Microsoft Entra ID (JWKS-validated tokens) · local dev login · API keys for device gateway |
 | Domain | `@burtplace/core` — pure, unit-tested shift / attendance / timesheet / payroll engines |
 
-## Quick start (development)
+## Run it on your machine
+
+One command. It checks the prerequisites, generates the secrets in `.env`, starts
+PostgreSQL and Redis, installs, migrates, seeds the demo data, runs the API and the
+web app and opens the browser.
+
+```bash
+./scripts/start.sh                 # macOS / Linux
+```
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start.ps1    # Windows
+```
+
+Then open <http://localhost:3000>. Useful flags: `--reset` (wipe and re-seed the demo
+data), `--https` (serve over HTTPS so a phone on the same Wi-Fi can use the camera),
+`--stop` (stop the database containers). On Windows use `-Reset`, `-Https`, `-Stop`.
+
+**Requirements:** [Node 22 LTS](https://nodejs.org) and either
+[Docker Desktop](https://docker.com/products/docker-desktop) (the script runs PostgreSQL
+and Redis for you) or your own PostgreSQL 16 on port 5432 and Redis on 6379.
+
+<details><summary>Manual steps (what the script does)</summary>
 
 ```bash
 cp .env.example .env               # set AUTH_LOCAL_JWT_SECRET (any 32+ chars)
@@ -27,6 +48,18 @@ pnpm dev:api                       # http://localhost:4000  (OpenAPI at /docs)
 pnpm worker                        # background jobs (optional in dev)
 pnpm dev:web                       # http://localhost:3000
 ```
+</details>
+
+### Try mobile face attendance
+
+1. **Directory** → open an employee → **Biometric** tab → **Enroll face** (use your own
+   face, three angles are captured automatically) → **Test recognition**.
+2. Open **/attendance**, press Start and follow the steps to **CHECK IN**.
+3. **Administration → Face recognition → Terminals** → Register terminal, then open
+   **/kiosk/pair** on a tablet and type the 6-digit code to turn it into a gate kiosk.
+
+Camera and GPS need `localhost` or HTTPS — use `--https` to test from a phone. Details in
+[docs/MOBILE-FACE-ATTENDANCE.md](docs/MOBILE-FACE-ATTENDANCE.md).
 
 Seed logins (password `Password123!`): `admin@`, `hr.admin@`, `hr.manager@`, `payroll@`, `finance@`, `it.admin@`, `pm.c31@`, `management@`, `auditor@`, `employee@` — all `@burtplace.local`.
 

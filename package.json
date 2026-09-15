@@ -19,6 +19,7 @@
     "test:unit": "pnpm --filter @burtplace/core test",
     "test:integration": "pnpm --filter @burtplace/api test",
     "db:migrate": "pnpm --filter @burtplace/database migrate",
+    "db:ensure": "pnpm --filter @burtplace/database ensure",
     "db:seed": "pnpm --filter @burtplace/database seed",
     "db:reset": "pnpm --filter @burtplace/database reset"
   },

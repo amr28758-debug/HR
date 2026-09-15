@@ -1,18 +1,15 @@
-FROM node:22-alpine AS base
+# API image. Debian (glibc) rather than Alpine: the face-recognition provider uses
+# @tensorflow/tfjs-node, whose native TensorFlow library is only published for glibc.
+FROM node:22-bookworm-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
-FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc ./
-COPY apps/api/package.json apps/api/
-COPY packages/database/package.json packages/database/
-COPY packages/core/package.json packages/core/
-COPY packages/types/package.json packages/types/
-COPY packages/config/package.json packages/config/
-RUN pnpm install --frozen-lockfile --filter @burtplace/api... --filter @burtplace/database...
-
-FROM deps AS build
+FROM base AS build
 COPY . .
+# Build scripts must run so the tfjs-node native addon is fetched (see pnpm.onlyBuiltDependencies).
+RUN pnpm install --frozen-lockfile
 RUN pnpm -r --filter './packages/**' build && pnpm --filter @burtplace/api build
 
 FROM base AS runtime

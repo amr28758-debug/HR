@@ -7,9 +7,10 @@ Node 22, pnpm 10, Docker (or local PostgreSQL 16 + Redis 7).
 
 | Command | What |
 |---|---|
+| `./scripts/start.sh` (`scripts\start.ps1` on Windows) | one-command local run: prerequisites, `.env` secrets, PostgreSQL/Redis, install, migrate+seed, API + web. Flags: `--reset`, `--https`, `--stop` |
 | `pnpm install` | install workspace |
 | `pnpm -r --filter './packages/**' build` | build shared packages (required before API/web) |
-| `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:reset` | migrations / seed / drop+migrate+seed (dev only) |
+| `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:ensure` / `pnpm db:reset` | migrations / seed / migrate+seed-if-empty / drop+migrate+seed (dev only) |
 | `pnpm dev:api`, `pnpm worker`, `pnpm dev:web` | run services |
 | `pnpm typecheck` | TypeScript across all packages |
 | `pnpm test:unit` / `pnpm test:integration` | core unit tests / API integration tests (`DATABASE_URL_TEST`, must contain "test") |

@@ -51,7 +51,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-    command: ["sh", "-c", "pnpm --filter @burtplace/database migrate && node apps/api/dist/main.js"]
+    command: ["sh", "-c", "pnpm --filter @burtplace/database ensure && node apps/api/dist/main.js"]  # migrate + seed demo data on first run
 
   worker:
     build:
