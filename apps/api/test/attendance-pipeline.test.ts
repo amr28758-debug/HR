@@ -114,7 +114,8 @@ describe('daily attendance', () => {
     const dev = (await hr.get('/api/v1/devices')).body.find((d: any) => d.deviceCode === DEV);
     expect(dev.lastPunchAt).not.toBeNull();
     const health = await admin.get('/api/v1/devices/health');
-    expect(health.body.total).toBe(6);
+    const devCount = Number((await app.db.selectFrom('devices').select((eb) => eb.fn.countAll<number>().as('n')).executeTakeFirstOrThrow()).n);
+    expect(health.body.total).toBe(devCount); // 6 seeded gateway devices + any MOBILE_FACE terminals registered by other suites
     const recon = await admin.post('/api/v1/attendance/reconcile', { from: '2026-08-01', to: '2026-08-12' });
     expect(recon.status).toBe(200);
     expect(recon.body.summary.rawUnprocessed).toBe(0);

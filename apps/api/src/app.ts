@@ -35,6 +35,8 @@ import { hrRequestRoutes } from './modules/hr-requests/routes.js';
 import { compensationRoutes } from './modules/compensation/routes.js';
 import { analyticsRoutes } from './modules/analytics/routes.js';
 import { assetRoutes } from './modules/assets/routes.js';
+import { biometricRoutes } from './modules/biometric/routes.js';
+import { mobileAttendanceRoutes } from './modules/attendance/mobile.routes.js';
 import { commandCenterRoutes } from './modules/employees/command-center.js';
 import { JobQueues } from './jobs/queues.js';
 
@@ -75,7 +77,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
       tags: [
         { name: 'auth' }, { name: 'employees' }, { name: 'organization' }, { name: 'devices' }, { name: 'attendance' }, { name: 'shifts' }, { name: 'timesheets' },
         { name: 'leave' }, { name: 'overtime' }, { name: 'payroll' }, { name: 'workflows' }, { name: 'dashboards' }, { name: 'reports' }, { name: 'search' }, { name: 'audit' }, { name: 'integrations' },
-        { name: 'hr-requests' }, { name: 'jobs' }, { name: 'compensation' }, { name: 'letters' }, { name: 'people' }, { name: 'analytics' }, { name: 'assets' },
+        { name: 'hr-requests' }, { name: 'jobs' }, { name: 'compensation' }, { name: 'letters' }, { name: 'people' }, { name: 'analytics' }, { name: 'assets' }, { name: 'biometric' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -103,6 +105,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
     await api.register(organizationRoutes, { prefix: '/org' });
     await api.register(deviceRoutes, { prefix: '/devices' });
     await api.register(attendanceRoutes, { prefix: '/attendance' });
+    await api.register(mobileAttendanceRoutes, { prefix: '/attendance' });
     await api.register(shiftRoutes, { prefix: '/shifts' });
     await api.register(timesheetRoutes, { prefix: '/timesheets' });
     await api.register(leaveRoutes, { prefix: '/leave' });
@@ -122,6 +125,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
     await api.register(peopleRoutes, { prefix: '/people' });
     await api.register(analyticsRoutes, { prefix: '/analytics' });
     await api.register(assetRoutes, { prefix: '/assets' });
+    await api.register(biometricRoutes, { prefix: '/biometric' });
   }, { prefix: '/api/v1' });
 
   return app;

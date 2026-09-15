@@ -47,6 +47,20 @@ export async function runJob<N extends JobName>(app: FastifyInstance, name: N, p
       const now = new Date();
       return { accrued: await runMonthlyAccrual(app, p.year || now.getUTCFullYear(), p.month || now.getUTCMonth() + 1) };
     }
+    case 'biometric.retention': {
+      // Configurable retention: delete templates of exited employees after N days (null = manual only); purge old recognition events.
+      const { loadFaceSettings } = await import('../modules/biometric/settings.js');
+      const cfg = (await loadFaceSettings(app.db, 0)).value;
+      let deleted = 0;
+      if (cfg.retention.deleteAfterExitDays !== null) {
+        const cutoff = new Date(Date.now() - cfg.retention.deleteAfterExitDays * 864e5);
+        const rows = await app.db.selectFrom('biometric_face_templates as t').innerJoin('employees as e', 'e.id', 't.employee_id').select(['t.id', 't.employee_id']).where('t.status', '!=', 'DELETED').where('e.status', 'in', ['TERMINATED', 'ARCHIVED']).where('e.last_working_date', '<', cutoff.toISOString().slice(0, 10)).execute();
+        for (const r of rows) { await app.db.updateTable('biometric_face_templates').set({ status: 'DELETED', deleted_at: new Date(), embedding_enc: Buffer.alloc(0) }).where('id', '=', r.id).execute(); await app.audit(null, { action: 'biometric.face.retention_delete', entityType: 'employee', entityId: r.employee_id, newValue: { templateId: r.id, policyDays: cfg.retention.deleteAfterExitDays } }, 'worker'); deleted++; }
+        const { invalidateFaceIndex } = await import('../modules/biometric/face-service.js'); invalidateFaceIndex();
+      }
+      // face_recognition_events is immutable by trigger; retention purge is a DBA operation documented in MOBILE-FACE-ATTENDANCE.md
+      return { deleted, eventRetentionDays: cfg.retention.recognitionEventRetentionDays };
+    }
     case 'notifications.deliver': { const { deliverPending } = await import('../notifications/channels.js'); return { delivered: await deliverPending(app) }; }
     case 'documents.expiryScan': {
       // Update statuses + notify HR about documents expiring within their reminder window (once per day per document)

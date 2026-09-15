@@ -53,7 +53,7 @@ export type PunchDirection = (typeof PUNCH_DIRECTIONS)[number];
 export const VERIFICATION_METHODS = ['FACE', 'FINGER', 'CARD', 'PIN', 'PALM', 'MANUAL', 'UNKNOWN'] as const;
 export type VerificationMethod = (typeof VERIFICATION_METHODS)[number];
 
-export const EVENT_SOURCES = ['DEVICE_PUSH', 'VYOM_SYNC', 'GATEWAY', 'MANUAL', 'IMPORT', 'API'] as const;
+export const EVENT_SOURCES = ['DEVICE_PUSH', 'VYOM_SYNC', 'GATEWAY', 'MANUAL', 'IMPORT', 'API', 'MOBILE_FACE'] as const;
 export type EventSource = (typeof EVENT_SOURCES)[number];
 
 export const DAY_STATUSES = [

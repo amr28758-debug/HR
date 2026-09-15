@@ -82,6 +82,11 @@ export async function transitionEmployee(db: Kysely<DB>, input: TransitionInput)
         await trx.updateTable('biometric_mappings').set({ is_active: false }).where('employee_id', '=', emp.id).execute();
       }
     }
+    // Mobile face recognition: leaving employees are disabled immediately (retention/deletion is a separate configurable policy — REQUIRES HR/LEGAL APPROVAL)
+    if (input.to === 'TERMINATED' || input.to === 'ARCHIVED') {
+      await trx.updateTable('biometric_face_templates').set({ status: 'DISABLED', disabled_at: new Date(), disabled_reason: `Employee ${input.to.toLowerCase()}` }).where('employee_id', '=', emp.id).where('status', '=', 'ACTIVE').execute();
+      await trx.updateTable('biometric_mappings').set({ is_active: false }).where('employee_id', '=', emp.id).where('provider', '=', 'MOBILE_FACE').execute();
+    }
     return { from: emp.status, to: input.to, checklistInstanceId, workflowCode: rule.workflowCode ?? null };
   });
 }

@@ -12,6 +12,8 @@ export const PERMISSIONS = [
   'org:read', 'org:write',
   // devices & integrations
   'devices:read', 'devices:write', 'integrations:read', 'integrations:write', 'attendance:ingest',
+  // biometric face templates (RESTRICTED) & attendance terminals
+  'biometric:read', 'biometric:enroll', 'biometric:delete', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write',
   // attendance
   'attendance:read', 'attendance:read:team', 'attendance:read:own', 'attendance:correct', 'attendance:process', 'attendance:exceptions:resolve',
   // shifts
@@ -56,7 +58,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
       'org:read', 'org:write', 'devices:read', 'attendance:read', 'attendance:correct', 'attendance:process', 'attendance:exceptions:resolve',
       'shifts:read', 'shifts:write', 'shifts:assign', 'leave:read', 'leave:request:any', 'leave:approve', 'leave:policy:write', 'overtime:read', 'overtime:approve',
       'timesheets:read', 'timesheets:generate', 'timesheets:approve', 'workflows:read', 'workflows:act', 'reports:hr', 'reports:attendance', 'dashboard:hr', 'assets:read', 'assets:write', 'migration:run',
-      'jobs:read', 'jobs:write', 'requests:create:any', 'requests:read', 'performance:read', 'performance:write', 'training:read', 'training:write', 'letters:generate', 'notes:read', 'notes:write', 'analytics:read', 'bulk:run', 'compensation:read',
+      'jobs:read', 'jobs:write', 'requests:create:any', 'requests:read', 'performance:read', 'performance:write', 'training:read', 'training:write', 'letters:generate', 'notes:read', 'notes:write', 'analytics:read', 'bulk:run', 'compensation:read', 'biometric:read', 'biometric:enroll', 'biometric:test', 'biometric:events:read',
     ],
   },
   HR_MANAGER: {
@@ -69,6 +71,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
       'reports:hr', 'reports:attendance', 'dashboard:hr', 'dashboard:executive', 'assets:read', 'assets:write', 'audit:read', 'migration:run',
       'jobs:read', 'jobs:write', 'compensation:read', 'compensation:write', 'requests:create:any', 'requests:read', 'disciplinary:read', 'disciplinary:write', 'performance:read', 'performance:write', 'training:read', 'training:write',
       'letters:generate', 'letters:templates:write', 'notes:read', 'notes:write', 'notes:confidential', 'analytics:read', 'config:write', 'delegation:manage', 'bulk:run',
+      'biometric:read', 'biometric:enroll', 'biometric:delete', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write',
     ],
   },
   PAYROLL_OFFICER: {
@@ -90,7 +93,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
   DEPARTMENT_MANAGER: { name: 'Department Manager', description: 'Sees and approves for department team', permissions: MANAGER_TEAM },
   IT_ADMIN: {
     name: 'IT Admin', description: 'Users, devices, integrations, biometric mapping',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'org:read', 'users:read', 'users:write', 'devices:read', 'devices:write', 'integrations:read', 'integrations:write', 'attendance:ingest', 'attendance:read', 'attendance:process', 'assets:read', 'assets:write', 'audit:read'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'org:read', 'users:read', 'users:write', 'devices:read', 'devices:write', 'integrations:read', 'integrations:write', 'attendance:ingest', 'attendance:read', 'attendance:process', 'assets:read', 'assets:write', 'audit:read', 'biometric:read', 'biometric:enroll', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write'],
   },
   EMPLOYEE: { name: 'Employee', description: 'Self-service only', permissions: EMPLOYEE_SELF },
   AUDITOR: {

@@ -341,6 +341,23 @@ export interface GeneratedLettersTable { id: Generated<string>; letter_no: strin
 export interface EmployeeNotesTable { id: Generated<string>; employee_id: string; category: Generated<string>; note: string; is_confidential: Generated<boolean>; pinned: Generated<boolean>; created_by: string | null; created_at: Generated<Timestamp> }
 export interface EmployeeTimelineEventsTable { id: Generated<number>; employee_id: string; event_type: string; title: string; description: string | null; occurred_at: Generated<Timestamp>; ref_type: string | null; ref_id: string | null; visibility: Generated<string>; actor_user_id: string | null; metadata: Json | null }
 export interface WorkflowDelegationsTable { id: Generated<string>; from_user_id: string; to_user_id: string; from_date: DateCol; to_date: DateCol; reason: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface BiometricFaceTemplatesTable {
+  id: Generated<string>; employee_id: string; provider: string; model_version: string; embedding_dim: number; embedding_enc: Buffer; sample_count: Generated<number>; quality: Generated<Json>;
+  status: Generated<string>; consent_note: string | null; enrolled_by: string | null; enrolled_at: Generated<Timestamp>; updated_at: Generated<Timestamp>; disabled_at: Timestamp | null; disabled_reason: string | null; deleted_at: Timestamp | null; deleted_by: string | null;
+}
+export interface AttendanceTerminalsTable {
+  id: Generated<string>; device_id: string; terminal_type: Generated<string>; token_hash: string | null; pairing_code: string | null; pairing_expires_at: Timestamp | null; paired_at: Timestamp | null; paired_user_agent: string | null;
+  status: Generated<string>; last_seen_at: Timestamp | null; last_ip: string | null; revoked_at: Timestamp | null; revoked_by: string | null; created_by: string | null; created_at: Generated<Timestamp>;
+}
+export interface SiteGeofencesTable { id: Generated<string>; site_id: string; name: string; latitude: Numeric; longitude: Numeric; radius_m: number; is_active: Generated<boolean>; created_by: string | null; created_at: Generated<Timestamp> }
+export interface FaceRecognitionEventsTable {
+  id: Generated<number>; occurred_at: Generated<Timestamp>; attendance_mode: string; terminal_id: string | null; device_code: string | null; site_id: string | null; outcome: string; reason: string | null; employee_id: string | null;
+  top_score: Numeric | null; second_score: Numeric | null; antispoof_score: Numeric | null; liveness_score: Numeric | null; quality: Json | null; latitude: Numeric | null; longitude: Numeric | null; gps_accuracy_m: Numeric | null;
+  geofence_result: string | null; distance_m: Numeric | null; direction: PunchDirection | null; raw_event_id: string | null; provider: string | null; model_version: string | null; actor_user_id: string | null; ip_address: string | null; user_agent: string | null; duration_ms: number | null;
+}
+export interface AppSettingsTable { key: string; value: Json; version: Generated<number>; updated_by: string | null; updated_at: Generated<Timestamp> }
+export interface AppSettingsHistoryTable { id: Generated<number>; key: string; version: number; value: Json; changed_by: string | null; changed_at: Generated<Timestamp>; reason: string | null }
+
 export interface VLetterVerification { verification_code: string; letter_no: string; status: string; issued_at: Date | null; letter_type: string; employee_no: string; full_name_en: string }
 
 export interface VEmployeeDirectory {
@@ -376,6 +393,7 @@ export interface DB {
   lookups: LookupsTable; disciplinary_cases: DisciplinaryCasesTable; performance_cycles: PerformanceCyclesTable; performance_reviews: PerformanceReviewsTable; performance_goals: PerformanceGoalsTable;
   training_catalog: TrainingCatalogTable; training_records: TrainingRecordsTable; letter_templates: LetterTemplatesTable; generated_letters: GeneratedLettersTable; employee_notes: EmployeeNotesTable;
   employee_timeline_events: EmployeeTimelineEventsTable; workflow_delegations: WorkflowDelegationsTable; v_letter_verification: VLetterVerification;
+  biometric_face_templates: BiometricFaceTemplatesTable; attendance_terminals: AttendanceTerminalsTable; site_geofences: SiteGeofencesTable; face_recognition_events: FaceRecognitionEventsTable; app_settings: AppSettingsTable; app_settings_history: AppSettingsHistoryTable;
 }
 
 export type Employee = Selectable<EmployeesTable>;

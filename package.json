@@ -2,9 +2,11 @@
   "name": "burtplace-workforce",
   "private": true,
   "version": "0.1.0",
-  "description": "Burtplace Workforce — HR, Attendance, Timesheet & Payroll platform",
+  "description": "Burtplace Workforce \u2014 HR, Attendance, Timesheet & Payroll platform",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "pnpm -r --filter './packages/**' build && pnpm --filter @burtplace/api build && pnpm --filter @burtplace/web build",
     "dev": "pnpm -r --parallel --filter './apps/**' dev",
@@ -24,5 +26,10 @@
     "typescript": "^5.6.3",
     "@types/node": "^22.10.2",
     "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tensorflow/tfjs-node"
+    ]
   }
 }

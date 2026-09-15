@@ -61,6 +61,11 @@ export const envSchema = z.object({
   SMTP_FROM: z.string().default('Burtplace Workforce <hr-noreply@burtplace.ae>'),
   TEAMS_WEBHOOK_URL: z.string().url().optional(),
 
+  // Mobile face attendance. Templates are AES-256-GCM encrypted with BIOMETRIC_TEMPLATE_KEY (64 hex chars = 32 bytes).
+  FACE_PROVIDER: z.enum(['human', 'none']).default('human'),
+  FACE_MODELS_PATH: z.string().optional(),            // defaults to the bundled @vladmandic/human models directory
+  BIOMETRIC_TEMPLATE_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/).optional(),
+
   COMPANY_NAME: z.string().default('Burtplace General Contracting'),
   COMPANY_TIMEZONE: z.string().default('Asia/Dubai'),
   DEFAULT_LOCALE: z.enum(['en', 'ar']).default('en'),
