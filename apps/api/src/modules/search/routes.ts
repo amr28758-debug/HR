@@ -30,7 +30,7 @@ export const searchRoutes: FastifyPluginAsync = async (app) => {
       for (const pr of await app.db.selectFrom('projects').select(['id', 'code', 'name']).where('deleted_at', 'is', null).where((eb) => eb.or([eb('code', 'ilike', like), eb('name', 'ilike', like)])).limit(5).execute()) out.push({ type: 'project', id: pr.id, title: `${pr.code} · ${pr.name}`, subtitle: null, link: `/organization/projects/${pr.id}` });
     }
     if (hasPermission(p, 'employees:documents:read')) {
-      for (const d of await app.db.selectFrom('employee_documents as d').innerJoin('employees as e', 'e.id', 'd.employee_id').select(['d.id', 'd.document_type', 'd.document_number', 'e.employee_no', 'e.id as eid']).where('d.deleted_at', 'is', null).where('d.document_number', 'ilike', like).limit(5).execute()) out.push({ type: 'document', id: d.id, title: `${d.document_type} ${d.document_number}`, subtitle: d.employee_no, link: `/employees/${d.eid}?tab=documents` });
+      for (const d of await app.db.selectFrom('employee_documents as d').innerJoin('employees as e', 'e.id', 'd.employee_id').select(['d.id', 'd.document_type', 'd.document_number', 'e.employee_no', 'e.id as eid']).where('d.deleted_at', 'is', null).where('d.document_number', 'ilike', like).limit(5).execute()) out.push({ type: 'document', id: d.id, title: `${d.document_type} ···${String(d.document_number).slice(-4)}`, subtitle: d.employee_no, link: `/employees/${d.eid}?tab=documents` });
     }
     if (hasPermission(p, 'payroll:read')) {
       for (const run of await app.db.selectFrom('payroll_runs').select(['id', 'code', 'status']).where('code', 'ilike', like).limit(3).execute()) out.push({ type: 'payroll', id: run.id, title: run.code, subtitle: run.status, link: `/payroll/runs/${run.id}` });

@@ -55,6 +55,24 @@ export const employeeRoutes: FastifyPluginAsync = async (app) => {
     if (q.projectId) base = base.where('v.project_id', '=', q.projectId);
     if (q.managerId) base = base.where('v.manager_id', '=', q.managerId);
     if (q.employmentType) base = base.where('v.employment_type', '=', q.employmentType);
+    if (q.costCenterId) base = base.where('v.cost_center_id', '=', q.costCenterId);
+    if (q.gradeId || q.careerLevelId || q.jobFamilyId || q.nationality || q.probation || q.contract || q.missing) {
+      base = base.where('v.id', 'in', (eb) => {
+        let sub = eb.selectFrom('employees as e').select('e.id');
+        if (q.gradeId) sub = sub.where('e.grade_id', '=', q.gradeId);
+        if (q.careerLevelId) sub = sub.where('e.career_level_id', '=', q.careerLevelId);
+        if (q.jobFamilyId) sub = sub.where('e.job_family_id', '=', q.jobFamilyId);
+        if (q.nationality) sub = sub.where('e.nationality', '=', q.nationality.toUpperCase());
+        if (q.probation === 'on') sub = sub.where('e.probation_status', '=', 'ON_PROBATION');
+        if (q.probation === 'due') sub = sub.where('e.probation_status', '=', 'ON_PROBATION').where('e.probation_end_date', '<=', sql<string>`(CURRENT_DATE + interval '14 days')::date`).where('e.probation_end_date', '>=', sql<string>`CURRENT_DATE`);
+        if (q.probation === 'overdue') sub = sub.where('e.probation_status', '=', 'ON_PROBATION').where('e.probation_end_date', '<', sql<string>`CURRENT_DATE`);
+        if (q.contract === 'expiring') sub = sub.where('e.contract_end_date', '<=', sql<string>`(CURRENT_DATE + interval '90 days')::date`);
+        if (q.missing === 'iban') sub = sub.where('e.bank_iban', 'is', null);
+        if (q.missing === 'biometric') sub = sub.where('e.matrix_user_id', 'is', null);
+        if (q.missing === 'salary') sub = sub.where('e.id', 'not in', eb.selectFrom('employee_salary_structures').select('employee_id'));
+        return sub;
+      });
+    }
     if (q.q) {
       const term = `%${q.q}%`;
       base = base.where((eb) => eb.or([eb('v.employee_no', 'ilike', term), eb('v.full_name_en', 'ilike', term), eb('v.full_name_ar', 'ilike', term), eb('v.mobile', 'ilike', term), eb('v.work_email', 'ilike', term), eb('v.matrix_user_id', '=', q.q!)]));

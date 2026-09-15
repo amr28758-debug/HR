@@ -65,7 +65,7 @@ async function applyActions(db: Kysely<DB>, actions: ActionDef[], entityType: st
   }
 }
 
-export interface DecideInput { taskId: string; userId: string; userRoles: string[]; decision: 'APPROVED' | 'REJECTED'; comment?: string }
+export interface DecideInput { taskId: string; userId: string; userRoles: string[]; decision: 'APPROVED' | 'REJECTED'; comment?: string; /** user ids that delegated their approvals to `userId` */ actingFor?: string[] }
 
 /** Approve/reject a task; advance to next applicable step or complete. Returns { instanceStatus, entityType, entityId }. */
 export async function decideTask(db: Kysely<DB>, input: DecideInput): Promise<{ instanceStatus: string; entityType: string; entityId: string; actions: ActionDef[]; sideEffects: string[] }> {
@@ -73,7 +73,7 @@ export async function decideTask(db: Kysely<DB>, input: DecideInput): Promise<{ 
     const task = await trx.selectFrom('workflow_tasks').selectAll().where('id', '=', input.taskId).forUpdate().executeTakeFirst();
     if (!task) throw Object.assign(new Error('Task not found'), { statusCode: 404 });
     if (task.status !== 'PENDING') throw Object.assign(new Error('Task already decided'), { statusCode: 409 });
-    const allowed = task.assignee_user_id === input.userId || (task.assignee_role_code && input.userRoles.includes(task.assignee_role_code)) || input.userRoles.includes('SUPER_ADMIN');
+    const allowed = task.assignee_user_id === input.userId || (task.assignee_user_id && (input.actingFor ?? []).includes(task.assignee_user_id)) || (task.assignee_role_code && input.userRoles.includes(task.assignee_role_code)) || input.userRoles.includes('SUPER_ADMIN');
     if (!allowed) throw Object.assign(new Error('You are not an assignee of this task'), { statusCode: 403 });
     await trx.updateTable('workflow_tasks').set({ status: input.decision, decided_by: input.userId, decided_at: new Date(), comment: input.comment ?? null }).where('id', '=', task.id).execute();
     const inst = await trx.selectFrom('workflow_instances').selectAll().where('id', '=', task.instance_id).forUpdate().executeTakeFirstOrThrow();

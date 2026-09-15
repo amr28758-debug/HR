@@ -43,7 +43,25 @@ export async function calculateRun(db: Kysely<DB>, runId: string): Promise<{ emp
     // extras: active loans, approved adjustments targeting this run (or unassigned)
     const extras: ExtraInput[] = [];
     const loans = await db.selectFrom('employee_loans').selectAll().where('employee_id', '=', e.id).where('status', '=', 'ACTIVE').where('start_period', '<=', start).execute();
-    for (const l of loans) { const amt = Math.min(Number(l.installment), Number(l.outstanding)); if (amt > 0) extras.push({ componentCode: l.loan_type === 'ADVANCE' ? 'ADVANCE' : 'LOAN', kind: 'DEDUCTION', amount: amt, description: `${l.loan_type} instalment` }); }
+    for (const l of loans) {
+      // Scheduled instalment for this period wins; legacy loans without a schedule fall back to the fixed instalment.
+      const sched = await db.selectFrom('loan_installments').select('amount').where('loan_id', '=', l.id).where('period_year', '=', run.period_year).where('period_month', '=', run.period_month).where('status', '=', 'SCHEDULED').executeTakeFirst();
+      const hasSchedule = sched || !!(await db.selectFrom('loan_installments').select('id').where('loan_id', '=', l.id).executeTakeFirst());
+      const amt = Math.min(Number(sched ? sched.amount : hasSchedule ? 0 : l.installment), Number(l.outstanding));
+      if (amt > 0) extras.push({ componentCode: l.loan_type === 'ADVANCE' ? 'ADVANCE' : 'LOAN', kind: 'DEDUCTION', amount: amt, description: `${l.loan_type} instalment` });
+    }
+    // Approved deductions for this period (asset damage, penalties, disciplinary…)
+    const deds = await db.selectFrom('employee_deductions as d').innerJoin('salary_components as c', 'c.id', 'd.component_id').select(['d.id', 'd.amount', 'd.reason', 'c.code']).where('d.employee_id', '=', e.id).where('d.status', '=', 'APPROVED').where('d.period_year', '=', run.period_year).where('d.period_month', '=', run.period_month).execute();
+    for (const d of deds) extras.push({ componentCode: d.code, kind: 'DEDUCTION', amount: Number(d.amount), description: d.reason });
+    // Approved bonuses: one-off for this period, or recurring for N months from the start period
+    const bonuses = await db.selectFrom('employee_bonuses as b').innerJoin('salary_components as c', 'c.id', 'b.component_id').select(['b.id', 'b.amount', 'b.percentage', 'b.reason', 'b.bonus_type', 'b.period_year', 'b.period_month', 'b.is_recurring', 'b.recurring_months', 'c.code']).where('b.employee_id', '=', e.id).where('b.status', 'in', ['APPROVED', 'APPLIED']).execute();
+    for (const b of bonuses) {
+      const startIdx = b.period_year * 12 + (b.period_month - 1), runIdx = run.period_year * 12 + (run.period_month - 1);
+      const inWindow = b.is_recurring ? runIdx >= startIdx && runIdx < startIdx + (b.recurring_months ?? 1) : runIdx === startIdx;
+      if (!inWindow) continue;
+      const amount = b.amount !== null ? Number(b.amount) : Math.round(salary.basicSalary * Number(b.percentage ?? 0)) / 100;
+      if (amount > 0) extras.push({ componentCode: b.code, kind: 'EARNING', amount, description: `${b.bonus_type}: ${b.reason}` });
+    }
     const adjs = await db.selectFrom('payroll_adjustments as a').innerJoin('salary_components as c', 'c.id', 'a.component_id').select(['a.id', 'a.amount', 'a.reason', 'c.code', 'c.kind']).where('a.employee_id', '=', e.id).where('a.status', '=', 'APPROVED').where((eb) => eb.or([eb('a.target_run_id', '=', runId), eb('a.target_run_id', 'is', null)])).execute();
     for (const a of adjs) extras.push({ componentCode: a.code, kind: a.kind, amount: Number(a.amount), description: a.reason, adjustmentId: a.id });
     const res = calculatePayroll(salary, summary, policy.config, extras);

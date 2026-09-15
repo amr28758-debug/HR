@@ -5,6 +5,7 @@
 import type pg from 'pg';
 import bcrypt from 'bcryptjs';
 import { PERMISSIONS, ROLE_PERMISSIONS } from './rbac.js';
+import { seedHrOs } from './seed-hros.js';
 
 type Log = (msg: string) => void;
 
@@ -368,6 +369,8 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
     } else {
       log('employees already present — skipped');
     }
+
+    await seedHrOs(c, log);
 
     await c.query('COMMIT');
   } catch (err) {

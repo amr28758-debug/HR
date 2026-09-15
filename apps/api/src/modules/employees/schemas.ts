@@ -14,6 +14,8 @@ export const employeeListQuery = z.object({
   managerId: z.string().uuid().optional(),
   employmentType: z.enum(EMPLOYMENT_TYPES).optional(),
   working: z.coerce.boolean().optional().describe('Only statuses that count as on-payroll'),
+  gradeId: z.string().uuid().optional(), careerLevelId: z.string().uuid().optional(), jobFamilyId: z.string().uuid().optional(), nationality: z.string().length(2).optional(),
+  costCenterId: z.string().uuid().optional(), probation: z.enum(['due', 'overdue', 'on']).optional(), contract: z.enum(['expiring']).optional(), missing: z.enum(['iban', 'biometric', 'salary']).optional(),
 });
 
 export const employeeSummary = z.object({

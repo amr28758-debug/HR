@@ -28,6 +28,13 @@ import { searchRoutes } from './modules/search/routes.js';
 import { auditRoutes } from './modules/audit/routes.js';
 import { integrationRoutes } from './modules/integrations/routes.js';
 import { migrationRoutes } from './modules/migration/routes.js';
+import { jobRoutes } from './modules/jobs/routes.js';
+import { letterRoutes } from './modules/letters/routes.js';
+import { peopleRoutes } from './modules/people/routes.js';
+import { hrRequestRoutes } from './modules/hr-requests/routes.js';
+import { compensationRoutes } from './modules/compensation/routes.js';
+import { analyticsRoutes } from './modules/analytics/routes.js';
+import { commandCenterRoutes } from './modules/employees/command-center.js';
 import { JobQueues } from './jobs/queues.js';
 
 export interface BuildAppOptions {
@@ -67,6 +74,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
       tags: [
         { name: 'auth' }, { name: 'employees' }, { name: 'organization' }, { name: 'devices' }, { name: 'attendance' }, { name: 'shifts' }, { name: 'timesheets' },
         { name: 'leave' }, { name: 'overtime' }, { name: 'payroll' }, { name: 'workflows' }, { name: 'dashboards' }, { name: 'reports' }, { name: 'search' }, { name: 'audit' }, { name: 'integrations' },
+        { name: 'hr-requests' }, { name: 'jobs' }, { name: 'compensation' }, { name: 'letters' }, { name: 'people' }, { name: 'analytics' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -90,6 +98,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
   await app.register(async (api) => {
     await api.register(authRoutes, { prefix: '/auth', env });
     await api.register(employeeRoutes, { prefix: '/employees' });
+    await api.register(commandCenterRoutes, { prefix: '/employees' });
     await api.register(organizationRoutes, { prefix: '/org' });
     await api.register(deviceRoutes, { prefix: '/devices' });
     await api.register(attendanceRoutes, { prefix: '/attendance' });
@@ -105,6 +114,12 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
     await api.register(auditRoutes, { prefix: '/audit' });
     await api.register(integrationRoutes, { prefix: '/integrations' });
     await api.register(migrationRoutes, { prefix: '/migration' });
+    await api.register(hrRequestRoutes, { prefix: '/hr-requests' });
+    await api.register(jobRoutes, { prefix: '/jobs' });
+    await api.register(compensationRoutes, { prefix: '/compensation' });
+    await api.register(letterRoutes, { prefix: '/letters' });
+    await api.register(peopleRoutes, { prefix: '/people' });
+    await api.register(analyticsRoutes, { prefix: '/analytics' });
   }, { prefix: '/api/v1' });
 
   return app;

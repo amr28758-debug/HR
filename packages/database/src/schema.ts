@@ -48,6 +48,7 @@ export interface DepartmentsTable {
 export interface DesignationsTable {
   id: Generated<string>; code: string; title: string; title_ar: string | null; grade: string | null; is_active: Generated<boolean>;
   created_at: Generated<Timestamp>; updated_at: Generated<Timestamp>; deleted_at: Timestamp | null;
+  job_family_id: string | null; job_function_id: string | null; default_grade_id: string | null; career_level_id: string | null;
 }
 export interface ProjectsTable {
   id: Generated<string>; code: string; name: string; name_ar: string | null; client_name: string | null; status: Generated<string>;
@@ -75,6 +76,7 @@ export interface EmployeesTable {
   contract_start_date: DateCol | null; contract_end_date: DateCol | null; last_working_date: DateCol | null;
   department_id: string | null; designation_id: string | null; site_id: string | null; project_id: string | null; cost_center_id: string | null;
   manager_employee_id: string | null; grade: string | null; is_office_staff: Generated<boolean>;
+  job_family_id: string | null; job_function_id: string | null; grade_id: string | null; career_level_id: string | null; job_description_version_id: string | null; notice_period_days: number | null; resignation_date: DateCol | null; exit_reason: string | null;
   bank_name: string | null; bank_account_name: string | null; bank_account_number: string | null; bank_iban: string | null; bank_swift: string | null; wps_person_id: string | null;
   search_vector: Generated<string | null>; created_by: string | null; updated_by: string | null;
   created_at: Generated<Timestamp>; updated_at: Generated<Timestamp>; deleted_at: Timestamp | null;
@@ -87,6 +89,7 @@ export interface EmploymentHistoryTable {
   id: Generated<number>; employee_id: string; effective_from: DateCol; effective_to: DateCol | null; change_type: string;
   department_id: string | null; designation_id: string | null; site_id: string | null; project_id: string | null; cost_center_id: string | null;
   manager_employee_id: string | null; grade: string | null; employment_type: EmploymentType | null; reason: string | null; changed_by: string | null; created_at: Generated<Timestamp>;
+  grade_id: string | null; career_level_id: string | null; hr_request_id: string | null;
 }
 export interface EmployeeContractsTable {
   id: Generated<string>; employee_id: string; contract_no: string | null; contract_type: Generated<string>; start_date: DateCol; end_date: DateCol | null;
@@ -97,7 +100,7 @@ export interface EmployeeDocumentsTable {
   id: Generated<string>; employee_id: string; document_type: DocumentType; document_number: string | null; issue_date: DateCol | null; expiry_date: DateCol | null;
   issuing_authority: string | null; object_key: string | null; file_name: string | null; mime_type: string | null; file_size_bytes: number | null;
   status: Generated<string>; reminder_days_before: Generated<number>; last_reminded_at: Timestamp | null; notes: string | null; created_by: string | null;
-  created_at: Generated<Timestamp>; updated_at: Generated<Timestamp>; deleted_at: Timestamp | null;
+  created_at: Generated<Timestamp>; updated_at: Generated<Timestamp>; deleted_at: Timestamp | null; category: string | null;
 }
 
 export interface SalaryComponentsTable {
@@ -108,6 +111,7 @@ export interface SalaryComponentsTable {
 export interface EmployeeSalaryStructuresTable {
   id: Generated<string>; employee_id: string; version: number; effective_from: DateCol; effective_to: DateCol | null; currency: Generated<string>;
   basic_salary: Numeric; gross_salary: Numeric; reason: string | null; approved_by: string | null; workflow_instance_id: string | null; created_by: string | null; created_at: Generated<Timestamp>;
+  hr_request_id: string | null; source: Generated<string>;
 }
 export interface EmployeeSalaryLinesTable { id: Generated<string>; salary_structure_id: string; component_id: string; amount: Generated<Numeric>; percentage: Numeric | null }
 export interface PayrollPoliciesTable {
@@ -256,6 +260,7 @@ export interface PayslipsTable {
 export interface EmployeeLoansTable {
   id: Generated<string>; employee_id: string; loan_type: Generated<string>; principal: Numeric; installment: Numeric; outstanding: Numeric; start_period: DateCol; status: Generated<string>;
   notes: string | null; created_by: string | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp>;
+  end_period: DateCol | null; reason: string | null; hr_request_id: string | null; approved_by: string | null; approved_at: Timestamp | null;
 }
 
 export interface WorkflowDefinitionsTable {
@@ -311,6 +316,33 @@ export interface ReconciliationRunsTable {
   id: Generated<string>; period_start: DateCol; period_end: DateCol; status: Generated<string>; summary: Json; findings: Generated<Json>; created_at: Generated<Timestamp>;
 }
 
+
+export interface CareerLevelsTable { id: Generated<string>; code: string; name: string; name_ar: string | null; rank: number; description: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface JobFamiliesTable { id: Generated<string>; code: string; name: string; name_ar: string | null; description: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface JobFunctionsTable { id: Generated<string>; job_family_id: string; code: string; name: string; name_ar: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface GradesTable { id: Generated<string>; code: string; name: string; career_level_id: string | null; min_salary: Numeric | null; mid_salary: Numeric | null; max_salary: Numeric | null; currency: Generated<string>; sort_order: Generated<number>; is_active: Generated<boolean>; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface JobDescriptionsTable { id: Generated<string>; code: string; designation_id: string; department_id: string | null; job_family_id: string | null; job_function_id: string | null; grade_id: string | null; career_level_id: string | null; reports_to_designation_id: string | null; location: string | null; status: Generated<string>; current_version: Generated<number>; created_by: string | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface JobDescriptionVersionsTable { id: Generated<string>; job_description_id: string; version: number; effective_from: DateCol; purpose: string | null; responsibilities: Generated<Json<string[]>>; duties: Generated<Json<string[]>>; qualifications: Generated<Json<string[]>>; experience: string | null; skills: Generated<Json<string[]>>; technical_competencies: Generated<Json<string[]>>; behavioural_competencies: Generated<Json<string[]>>; kpis: Generated<Json<string[]>>; required_certifications: Generated<Json<string[]>>; status: Generated<string>; approved_by: string | null; approved_at: Timestamp | null; created_by: string | null; created_at: Generated<Timestamp> }
+export interface HrRequestsTable { id: Generated<string>; request_no: string; request_type: string; employee_id: string; title: string; payload: Generated<Json<Record<string, any>>>; before_snapshot: Json<Record<string, any>> | null; effective_date: DateCol | null; reason: string | null; status: Generated<string>; workflow_instance_id: string | null; requested_by: string | null; decided_by: string | null; decided_at: Timestamp | null; applied_at: Timestamp | null; apply_error: string | null; result: Json | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface EmployeeDeductionsTable { id: Generated<string>; employee_id: string; component_id: string; amount: Numeric; reason: string; deduction_date: Generated<DateCol>; period_year: number; period_month: number; source: Generated<string>; status: Generated<string>; hr_request_id: string | null; approved_by: string | null; approved_at: Timestamp | null; payroll_run_id: string | null; created_by: string | null; created_at: Generated<Timestamp> }
+export interface EmployeeBonusesTable { id: Generated<string>; employee_id: string; bonus_type: string; component_id: string; amount: Numeric | null; percentage: Numeric | null; reason: string; period_year: number; period_month: number; is_recurring: Generated<boolean>; recurring_months: number | null; status: Generated<string>; hr_request_id: string | null; approved_by: string | null; approved_at: Timestamp | null; payroll_run_id: string | null; created_by: string | null; created_at: Generated<Timestamp> }
+export interface LoanInstallmentsTable { id: Generated<string>; loan_id: string; period_year: number; period_month: number; amount: Numeric; status: Generated<string>; payroll_run_id: string | null }
+export interface IncrementCyclesTable { id: Generated<string>; name: string; cycle_year: number; effective_date: DateCol; default_percentage: Generated<Numeric>; status: Generated<string>; filters: Generated<Json>; notes: string | null; created_by: string | null; approved_by: string | null; approved_at: Timestamp | null; applied_at: Timestamp | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface IncrementEntriesTable { id: Generated<string>; cycle_id: string; employee_id: string; current_basic: Numeric; current_gross: Numeric; performance_rating: Numeric | null; grade_code: string | null; proposed_percentage: Generated<Numeric>; proposed_amount: Generated<Numeric>; new_basic: Numeric; new_gross: Numeric; status: Generated<string>; note: string | null; hr_request_id: string | null; applied_salary_structure_id: string | null }
+export interface LookupsTable { id: Generated<string>; category: string; code: string; name: string; name_ar: string | null; config: Generated<Json>; sort_order: Generated<number>; is_active: Generated<boolean> }
+export interface DisciplinaryCasesTable { id: Generated<string>; case_no: string; employee_id: string; category: string; severity: Generated<string>; incident_date: DateCol; description: string; evidence: Generated<Json>; action_taken: string | null; employee_response: string | null; status: Generated<string>; is_confidential: Generated<boolean>; hr_request_id: string | null; closed_at: Timestamp | null; created_by: string | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface PerformanceCyclesTable { id: Generated<string>; name: string; cycle_year: number; period_start: DateCol; period_end: DateCol; review_due: DateCol | null; status: Generated<string>; rating_scale: Generated<Json>; competencies: Generated<Json<string[]>>; created_by: string | null; created_at: Generated<Timestamp> }
+export interface PerformanceReviewsTable { id: Generated<string>; cycle_id: string; employee_id: string; reviewer_employee_id: string | null; status: Generated<string>; self_rating: Numeric | null; manager_rating: Numeric | null; final_rating: Numeric | null; competency_scores: Generated<Json<Record<string, number>>>; self_comments: string | null; manager_comments: string | null; development_plan: string | null; finalized_by: string | null; finalized_at: Timestamp | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface PerformanceGoalsTable { id: Generated<string>; review_id: string; title: string; kpi: string | null; weight: Generated<Numeric>; target: string | null; achievement: string | null; score: Numeric | null; sort_order: Generated<number> }
+export interface TrainingCatalogTable { id: Generated<string>; code: string; title: string; title_ar: string | null; category: Generated<string>; provider: string | null; duration_hours: Numeric | null; validity_months: number | null; is_mandatory: Generated<boolean>; description: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface TrainingRecordsTable { id: Generated<string>; training_id: string; employee_id: string; status: Generated<string>; scheduled_date: DateCol | null; completed_at: DateCol | null; score: Numeric | null; certificate_no: string | null; certificate_object_key: string | null; certificate_expiry: DateCol | null; cost: Numeric | null; notes: string | null; hr_request_id: string | null; assigned_by: string | null; created_at: Generated<Timestamp>; updated_at: Generated<Timestamp> }
+export interface LetterTemplatesTable { id: Generated<string>; code: string; version: Generated<number>; name: string; name_ar: string | null; category: Generated<string>; language: Generated<string>; subject: string | null; body_en: string | null; body_ar: string | null; requires_approval: Generated<boolean>; signatory_name: string | null; signatory_title: string | null; signatory_title_ar: string | null; is_active: Generated<boolean>; created_by: string | null; created_at: Generated<Timestamp> }
+export interface GeneratedLettersTable { id: Generated<string>; letter_no: string; verification_code: string; template_id: string; employee_id: string; language: string; variables: Json<Record<string, any>>; rendered_html: string; addressee: string | null; purpose: string | null; status: Generated<string>; hr_request_id: string | null; issued_by: string | null; issued_at: Timestamp | null; revoked_at: Timestamp | null; revoke_reason: string | null; object_key: string | null; created_at: Generated<Timestamp> }
+export interface EmployeeNotesTable { id: Generated<string>; employee_id: string; category: Generated<string>; note: string; is_confidential: Generated<boolean>; pinned: Generated<boolean>; created_by: string | null; created_at: Generated<Timestamp> }
+export interface EmployeeTimelineEventsTable { id: Generated<number>; employee_id: string; event_type: string; title: string; description: string | null; occurred_at: Generated<Timestamp>; ref_type: string | null; ref_id: string | null; visibility: Generated<string>; actor_user_id: string | null; metadata: Json | null }
+export interface WorkflowDelegationsTable { id: Generated<string>; from_user_id: string; to_user_id: string; from_date: DateCol; to_date: DateCol; reason: string | null; is_active: Generated<boolean>; created_at: Generated<Timestamp> }
+export interface VLetterVerification { verification_code: string; letter_no: string; status: string; issued_at: Date | null; letter_type: string; employee_no: string; full_name_en: string }
+
 export interface VEmployeeDirectory {
   id: string; employee_no: string; full_name_en: string; full_name_ar: string | null; status: EmployeeStatus; employment_type: EmploymentType; joining_date: string | null;
   probation_status: string; probation_end_date: string | null; contract_end_date: string | null; mobile: string | null; work_email: string | null; photo_object_key: string | null;
@@ -339,6 +371,11 @@ export interface DB {
   assets: AssetsTable; employee_assets: EmployeeAssetsTable; checklist_templates: ChecklistTemplatesTable; checklist_instances: ChecklistInstancesTable; checklist_tasks: ChecklistTasksTable;
   integration_connections: IntegrationConnectionsTable; integration_logs: IntegrationLogsTable; integration_failures: IntegrationFailuresTable;
   migration_batches: MigrationBatchesTable; migration_rows: MigrationRowsTable; reconciliation_runs: ReconciliationRunsTable;
+  career_levels: CareerLevelsTable; job_families: JobFamiliesTable; job_functions: JobFunctionsTable; grades: GradesTable; job_descriptions: JobDescriptionsTable; job_description_versions: JobDescriptionVersionsTable;
+  hr_requests: HrRequestsTable; employee_deductions: EmployeeDeductionsTable; employee_bonuses: EmployeeBonusesTable; loan_installments: LoanInstallmentsTable; increment_cycles: IncrementCyclesTable; increment_entries: IncrementEntriesTable;
+  lookups: LookupsTable; disciplinary_cases: DisciplinaryCasesTable; performance_cycles: PerformanceCyclesTable; performance_reviews: PerformanceReviewsTable; performance_goals: PerformanceGoalsTable;
+  training_catalog: TrainingCatalogTable; training_records: TrainingRecordsTable; letter_templates: LetterTemplatesTable; generated_letters: GeneratedLettersTable; employee_notes: EmployeeNotesTable;
+  employee_timeline_events: EmployeeTimelineEventsTable; workflow_delegations: WorkflowDelegationsTable; v_letter_verification: VLetterVerification;
 }
 
 export type Employee = Selectable<EmployeesTable>;

@@ -30,17 +30,21 @@ export const PERMISSIONS = [
   'reports:hr', 'reports:attendance', 'reports:payroll', 'reports:cost', 'dashboard:executive', 'dashboard:hr', 'dashboard:manager', 'dashboard:payroll',
   // admin
   'users:read', 'users:write', 'roles:write', 'audit:read', 'system:admin', 'assets:read', 'assets:write', 'migration:run',
+  // HR operating system
+  'jobs:read', 'jobs:write', 'compensation:read', 'compensation:write', 'requests:create:own', 'requests:create:any', 'requests:read', 'requests:read:team', 'requests:read:own',
+  'disciplinary:read', 'disciplinary:write', 'performance:read', 'performance:read:team', 'performance:read:own', 'performance:write', 'training:read', 'training:read:own', 'training:write',
+  'letters:generate', 'letters:read:own', 'letters:templates:write', 'notes:read', 'notes:write', 'notes:confidential', 'analytics:read', 'config:write', 'delegation:manage', 'bulk:run',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ALL = [...PERMISSIONS];
 const EMPLOYEE_SELF: Permission[] = [
   'employees:read:own', 'salary:read:own', 'attendance:read:own', 'leave:read:own', 'leave:request:own', 'overtime:read:own', 'overtime:request',
-  'timesheets:read:own', 'payslips:read:own', 'workflows:act',
+  'timesheets:read:own', 'payslips:read:own', 'workflows:act', 'requests:create:own', 'requests:read:own', 'performance:read:own', 'training:read:own', 'letters:read:own',
 ];
 const MANAGER_TEAM: Permission[] = [
   ...EMPLOYEE_SELF, 'employees:read:team', 'attendance:read:team', 'leave:read:team', 'leave:approve', 'overtime:read:team', 'overtime:approve',
-  'timesheets:read:team', 'timesheets:approve', 'dashboard:manager', 'org:read', 'shifts:read',
+  'timesheets:read:team', 'timesheets:approve', 'dashboard:manager', 'org:read', 'shifts:read', 'requests:read:team', 'performance:read:team', 'performance:write', 'jobs:read', 'training:read', 'notes:read',
 ];
 
 export const ROLE_PERMISSIONS: Record<string, { name: string; description: string; permissions: Permission[] }> = {
@@ -52,6 +56,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
       'org:read', 'org:write', 'devices:read', 'attendance:read', 'attendance:correct', 'attendance:process', 'attendance:exceptions:resolve',
       'shifts:read', 'shifts:write', 'shifts:assign', 'leave:read', 'leave:request:any', 'leave:approve', 'leave:policy:write', 'overtime:read', 'overtime:approve',
       'timesheets:read', 'timesheets:generate', 'timesheets:approve', 'workflows:read', 'workflows:act', 'reports:hr', 'reports:attendance', 'dashboard:hr', 'assets:read', 'assets:write', 'migration:run',
+      'jobs:read', 'jobs:write', 'requests:create:any', 'requests:read', 'performance:read', 'performance:write', 'training:read', 'training:write', 'letters:generate', 'notes:read', 'notes:write', 'analytics:read', 'bulk:run', 'compensation:read',
     ],
   },
   HR_MANAGER: {
@@ -62,22 +67,24 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
       'shifts:read', 'shifts:write', 'shifts:assign', 'leave:read', 'leave:request:any', 'leave:approve', 'leave:policy:write', 'overtime:read', 'overtime:approve', 'overtime:rules:write',
       'timesheets:read', 'timesheets:generate', 'timesheets:approve', 'timesheets:lock', 'payroll:read', 'payroll:review:hr', 'workflows:read', 'workflows:write', 'workflows:act',
       'reports:hr', 'reports:attendance', 'dashboard:hr', 'dashboard:executive', 'assets:read', 'assets:write', 'audit:read', 'migration:run',
+      'jobs:read', 'jobs:write', 'compensation:read', 'compensation:write', 'requests:create:any', 'requests:read', 'disciplinary:read', 'disciplinary:write', 'performance:read', 'performance:write', 'training:read', 'training:write',
+      'letters:generate', 'letters:templates:write', 'notes:read', 'notes:write', 'notes:confidential', 'analytics:read', 'config:write', 'delegation:manage', 'bulk:run',
     ],
   },
   PAYROLL_OFFICER: {
     name: 'Payroll Officer', description: 'Runs payroll, manages salary structures and adjustments',
     permissions: [
       ...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'salary:read', 'salary:write', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'timesheets:lock',
-      'payroll:read', 'payroll:run', 'payroll:adjust', 'payslips:read', 'reports:payroll', 'reports:attendance', 'dashboard:payroll', 'workflows:act',
+      'payroll:read', 'payroll:run', 'payroll:adjust', 'payslips:read', 'reports:payroll', 'reports:attendance', 'dashboard:payroll', 'workflows:act', 'compensation:read', 'compensation:write', 'requests:read', 'jobs:read',
     ],
   },
   FINANCE: {
     name: 'Finance', description: 'Payroll finance review, cost reports',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'reports:payroll', 'reports:cost', 'dashboard:payroll'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'compensation:read', 'requests:read', 'analytics:read', 'workflows:act'],
   },
   FINANCE_MANAGER: {
     name: 'Finance Manager', description: 'Finance plus payroll approval and payment',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'payroll:approve', 'payroll:lock', 'payroll:pay', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'dashboard:executive', 'workflows:act'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'payroll:approve', 'payroll:lock', 'payroll:pay', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'dashboard:executive', 'workflows:act', 'compensation:read', 'requests:read', 'analytics:read'],
   },
   PROJECT_MANAGER: { name: 'Project Manager', description: 'Sees and approves for project team', permissions: [...MANAGER_TEAM, 'reports:attendance', 'reports:cost'] },
   DEPARTMENT_MANAGER: { name: 'Department Manager', description: 'Sees and approves for department team', permissions: MANAGER_TEAM },
@@ -92,7 +99,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
   },
   MANAGEMENT: {
     name: 'Management', description: 'Executive dashboards, final approvals',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'salary:read', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'payroll:read', 'payroll:approve', 'reports:hr', 'reports:attendance', 'reports:payroll', 'reports:cost', 'dashboard:executive', 'dashboard:hr', 'dashboard:payroll', 'workflows:act'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'salary:read', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'payroll:read', 'payroll:approve', 'reports:hr', 'reports:attendance', 'reports:payroll', 'reports:cost', 'dashboard:executive', 'dashboard:hr', 'dashboard:payroll', 'workflows:act', 'jobs:read', 'compensation:read', 'requests:read', 'performance:read', 'analytics:read'],
   },
   SERVICE_DEVICE_GATEWAY: { name: 'Service: Device Gateway', description: 'Machine account for device/middleware event push', permissions: ['attendance:ingest', 'devices:read'] },
 };
