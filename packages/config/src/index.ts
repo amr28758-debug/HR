@@ -78,7 +78,11 @@ let cached: Env | undefined;
 /** Parse and validate process.env once. Throws a readable error listing every invalid variable. */
 export function getEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): Env {
   if (cached && Object.keys(overrides).length === 0) return cached;
-  const parsed = envSchema.safeParse({ ...process.env, ...overrides });
+  // A blank value in .env (the template ships every optional key empty) means "not configured",
+  // so drop empty strings before validating instead of failing rules like `.url()`.
+  const raw: Record<string, string | undefined> = { ...process.env, ...overrides };
+  for (const [k, v] of Object.entries(raw)) if (v === '' || (typeof v === 'string' && v.trim() === '')) delete raw[k];
+  const parsed = envSchema.safeParse(raw);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);
