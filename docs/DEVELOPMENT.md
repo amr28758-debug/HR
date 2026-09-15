@@ -7,6 +7,7 @@ Node 22, pnpm 10, Docker (or local PostgreSQL 16 + Redis 7).
 
 | Command | What |
 |---|---|
+| `./scripts/install.sh` (`scripts\install.ps1` on Windows) | install a copy in `HR/Burtplace`, add a Desktop/Start-Menu shortcut and start it. Re-run to update |
 | `./scripts/start.sh` (`scripts\start.ps1` on Windows) | one-command local run: prerequisites, `.env` secrets, PostgreSQL/Redis, install, migrate+seed, API + web. Flags: `--reset`, `--https`, `--stop` |
 | `pnpm install` | install workspace |
 | `pnpm -r --filter './packages/**' build` | build shared packages (required before API/web) |

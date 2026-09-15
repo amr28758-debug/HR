@@ -15,11 +15,34 @@ Employee → Employment → Shift → Attendance → Leave / OT → Timesheet �
 | Auth | Microsoft Entra ID (JWKS-validated tokens) · local dev login · API keys for device gateway |
 | Domain | `@burtplace/core` — pure, unit-tested shift / attendance / timesheet / payroll engines |
 
-## Run it on your machine
+## Install it on your machine
 
-One command. It checks the prerequisites, generates the secrets in `.env`, starts
-PostgreSQL and Redis, installs, migrates, seeds the demo data, runs the API and the
-web app and opens the browser.
+One command installs a copy in `HR/Burtplace`, puts a **Burtplace Workforce** icon on
+the Desktop (and the Start Menu on Windows) and starts it. After that, opening the
+program is a double-click — no commands.
+
+**Windows** (PowerShell):
+```powershell
+git clone -b claude/gracious-brahmagupta-mcdn7j https://github.com/amr28758-debug/HR.git "$env:USERPROFILE\HR\Burtplace"; powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\HR\Burtplace\scripts\install.ps1"
+```
+
+**macOS / Linux**:
+```bash
+git clone -b claude/gracious-brahmagupta-mcdn7j https://github.com/amr28758-debug/HR.git ~/HR/Burtplace && ~/HR/Burtplace/scripts/install.sh
+```
+
+Install somewhere else with `-Path "D:\HR\Burtplace"` (Windows) or `--path ~/work/bp`.
+Re-running the installer updates the copy to the latest commit.
+
+**Requirements:** [Git](https://git-scm.com/downloads), [Node 22 LTS](https://nodejs.org)
+and either [Docker Desktop](https://docker.com/products/docker-desktop) (the installer
+runs PostgreSQL and Redis for you) or your own PostgreSQL 16 on port 5432 and Redis on 6379.
+
+### Start it again later
+
+Double-click the Desktop icon, or run the launcher directly. It checks the
+prerequisites, generates the secrets in `.env`, starts PostgreSQL and Redis, installs,
+migrates, seeds the demo data, runs the API and the web app and opens the browser.
 
 ```bash
 ./scripts/start.sh                 # macOS / Linux
