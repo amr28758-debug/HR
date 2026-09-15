@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, Users, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, CheckSquare, Cpu, Building2, BarChart3, Settings, Search, Moon, Sun, Languages, LogOut, Bell, Menu, X, HelpCircle, Network, CalendarDays, Briefcase, Target, GraduationCap, Gavel, Coins, FolderOpen, FileSignature, Laptop, Inbox, UserCog, LineChart, SlidersHorizontal, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, CheckSquare, Cpu, Building2, BarChart3, Settings, Search, Moon, Sun, Languages, LogOut, Bell, Menu, X, HelpCircle, Network, CalendarDays, Briefcase, Target, GraduationCap, Gavel, Coins, FolderOpen, FileSignature, Laptop, Inbox, UserCog, LineChart, SlidersHorizontal, Zap, ScanFace } from 'lucide-react';
 import { useAuth, useUi } from '@/lib/providers';
 import { api } from '@/lib/api';
 import { Avatar, cn } from '@/components/ui';
@@ -27,7 +27,8 @@ export const GROUPS: { title: { en: string; ar: string }; items: NavItem[] }[] =
     { href: '/talent/disciplinary', en: 'Disciplinary', ar: 'الإجراءات التأديبية', icon: Gavel, perms: ['disciplinary:read'] },
   ] },
   { title: { en: 'Time', ar: 'الوقت' }, items: [
-    { href: '/attendance', en: 'Attendance', ar: 'الحضور', icon: Fingerprint, perms: ['attendance:read', 'attendance:read:team', 'attendance:read:own'] },
+    { href: '/time/attendance', en: 'Attendance', ar: 'الحضور', icon: Fingerprint, perms: ['attendance:read', 'attendance:read:team', 'attendance:read:own'] },
+    { href: '/attendance', en: 'Face attendance (mobile)', ar: 'حضور بالوجه (جوال)', icon: ScanFace, perms: [] },
     { href: '/shifts', en: 'Shifts', ar: 'الورديات', icon: CalendarClock, perms: ['shifts:read'] },
     { href: '/timesheets', en: 'Timesheets', ar: 'كشوف الدوام', icon: FileSpreadsheet, perms: ['timesheets:read', 'timesheets:read:team', 'timesheets:read:own'] },
     { href: '/overtime', en: 'Overtime', ar: 'العمل الإضافي', icon: Timer, perms: ['overtime:read', 'overtime:read:team', 'overtime:read:own'] },
@@ -59,6 +60,7 @@ export const GROUPS: { title: { en: string; ar: string }; items: NavItem[] }[] =
   { title: { en: 'Administration', ar: 'الإدارة' }, items: [
     { href: '/organization', en: 'Organization', ar: 'الهيكل', icon: Building2, perms: ['org:read'] },
     { href: '/devices', en: 'Devices', ar: 'الأجهزة', icon: Cpu, perms: ['devices:read'] },
+    { href: '/admin/attendance/face', en: 'Face recognition', ar: 'التعرف على الوجه', icon: ScanFace, perms: ['face:config:write', 'terminals:manage', 'biometric:events:read'] },
     { href: '/admin/config', en: 'Configuration center', ar: 'مركز الإعدادات', icon: SlidersHorizontal, perms: ['config:write', 'workflows:write', 'payroll:policy:write'] },
     { href: '/settings', en: 'Settings & audit', ar: 'الإعدادات والتدقيق', icon: Settings, perms: ['integrations:read', 'audit:read', 'users:read'] },
   ] },
@@ -73,7 +75,9 @@ const ACTIONS: { en: string; ar: string; href: string; perms: string[]; keywords
   { en: 'Bulk operation', ar: 'عملية جماعية', href: '/employees?bulk=1', perms: ['bulk:run'], keywords: 'mass transfer bonus training' },
   { en: 'Increment cycle', ar: 'دورة الزيادات', href: '/compensation?tab=increments', perms: ['compensation:write'], keywords: 'annual raise' },
   { en: 'Run payroll', ar: 'تشغيل الرواتب', href: '/payroll', perms: ['payroll:run'], keywords: 'calculate lock wps' },
-  { en: 'Process attendance', ar: 'معالجة الحضور', href: '/attendance', perms: ['attendance:process'], keywords: 'punch recalculate' },
+  { en: 'Process attendance', ar: 'معالجة الحضور', href: '/time/attendance', perms: ['attendance:process'], keywords: 'punch recalculate' },
+  { en: 'Face attendance terminal', ar: 'جهاز الحضور بالوجه', href: '/attendance', perms: [], keywords: 'face kiosk mobile check in punch' },
+  { en: 'Face recognition settings', ar: 'إعدادات التعرف على الوجه', href: '/admin/attendance/face', perms: ['face:config:write', 'terminals:manage', 'biometric:events:read'], keywords: 'biometric kiosk terminal geofence threshold' },
   { en: 'Delegate my approvals', ar: 'تفويض الموافقات', href: '/workflows/delegations', perms: ['workflows:act'], keywords: 'out of office vacation' },
   { en: 'HR control center', ar: 'مركز تحكم الموارد البشرية', href: '/', perms: ['analytics:read'], keywords: 'attention expiring probation' },
   { en: 'Org chart', ar: 'الهيكل التنظيمي', href: '/people/org-chart', perms: ['employees:read'], keywords: 'reporting lines' },

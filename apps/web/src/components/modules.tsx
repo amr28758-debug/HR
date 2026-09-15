@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Users, Building2, FileText, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, Receipt, BarChart3, Cpu, ShieldCheck, Plug, GitBranch, ChevronRight, CheckSquare, ScrollText } from 'lucide-react';
+import { Users, Building2, FileText, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, Receipt, BarChart3, Cpu, ShieldCheck, Plug, GitBranch, ChevronRight, CheckSquare, ScrollText, ScanFace } from 'lucide-react';
 import { useAuth, useUi } from '@/lib/providers';
 import { cn } from '@/components/ui';
 
@@ -15,7 +15,8 @@ export const SECTIONS: Section[] = [
     { href: '/approvals', en: 'Approvals inbox', ar: 'صندوق الموافقات', icon: CheckSquare, perms: ['workflows:act'] },
   ] },
   { key: 'time', en: 'Time', ar: 'الوقت والحضور', blurbEn: 'From the punch to the timesheet', blurbAr: 'من البصمة إلى كشف الدوام', tone: 'from-info to-brand', features: [
-    { href: '/attendance', en: 'Daily attendance & exceptions', ar: 'الحضور اليومي والاستثناءات', icon: Fingerprint, perms: ['attendance:read', 'attendance:read:team', 'attendance:read:own'] },
+    { href: '/time/attendance', en: 'Daily attendance & exceptions', ar: 'الحضور اليومي والاستثناءات', icon: Fingerprint, perms: ['attendance:read', 'attendance:read:team', 'attendance:read:own'] },
+    { href: '/attendance', en: 'Face attendance (mobile / kiosk)', ar: 'حضور بالوجه (جوال / كشك)', icon: ScanFace, perms: [] },
     { href: '/shifts', en: 'Shifts & schedules', ar: 'الورديات والجداول', icon: CalendarClock, perms: ['shifts:read'] },
     { href: '/leave', en: 'Leave & balances', ar: 'الإجازات والأرصدة', icon: Palmtree, perms: ['leave:read', 'leave:read:team', 'leave:read:own'] },
     { href: '/overtime', en: 'Overtime', ar: 'العمل الإضافي', icon: Timer, perms: ['overtime:read', 'overtime:read:team', 'overtime:read:own'] },

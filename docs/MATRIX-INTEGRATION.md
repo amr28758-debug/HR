@@ -13,6 +13,12 @@ getAttendanceEvents?(cursor); parseInboundEvents?(payload); getDeviceStatus?; he
 
 Adapters: `WebhookBiometricProvider` (push, works today), `VyomBiometricProvider` (pull skeleton). Selected by `BIOMETRIC_PROVIDER`.
 
+**Mobile face attendance is independent of Matrix.** It has its own provider seam (`FaceRecognitionProvider`, on-prem
+`@vladmandic/human`), its own templates (encrypted, `biometric_face_templates`) and enters the same raw ledger with source
+`MOBILE_FACE`. Matrix terminals and mobile face terminals can coexist; neither is required for the other
+(docs/MOBILE-FACE-ATTENDANCE.md). The "no templates transferred" principle above applies to the Matrix boundary — mobile
+face templates never leave Burtplace Workforce.
+
 ## Capability matrix
 
 | Capability | Webhook / Device Gateway (Option A) | COSEC VYOM (Option B) |

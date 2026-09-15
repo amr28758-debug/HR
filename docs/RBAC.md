@@ -26,6 +26,14 @@ The matrix lives in `packages/database/src/rbac.ts` and is seeded into `roles`, 
 (salary, promotion, loans, bonuses, deductions, disciplinary, termination) hide their content from
 callers without `compensation:read` / `disciplinary:read` unless the request is their own.
 
+## Mobile face attendance permissions
+
+`biometric:read` (status/quality metadata), `biometric:enroll` (enroll / re-enroll / disable / enable — never one's own
+face), `biometric:test`, `biometric:delete` (irreversible template deletion), `biometric:events:read` (recognition audit),
+`terminals:manage` (kiosk registration, pairing codes, revocation), `face:config:write` (thresholds, liveness, GPS,
+retention — versioned). HR_ADMIN: read/enroll/test/events. HR_MANAGER: all. IT_ADMIN: read/enroll/test/events/terminals/config.
+Employees see only their own status and events (`employees:read:own`, `attendance:read:own`). No role can read a template.
+
 ## Scoping rules
 
 - **Team** = direct reports (4 levels) ∪ employees of projects the user's employee record manages ∪ employees of departments they manage.

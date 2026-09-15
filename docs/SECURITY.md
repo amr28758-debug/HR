@@ -13,7 +13,8 @@
 | Secrets | Only from environment; `.env` git-ignored; `.env.example` documents every variable. |
 | Transport | TLS terminates at the reverse proxy / ingress (deployment); `trustProxy` enabled. |
 | Data at rest | PostgreSQL volume encryption at the infrastructure layer (cloud disk / LUKS); object storage SSE. Application-level field encryption for IBAN can be added if required by policy. |
-| Biometrics | No templates stored or transferred by design. |
+| Biometrics (Matrix) | No templates stored or transferred by design. |
+| Biometrics (mobile face attendance) | Face templates AES-256-GCM encrypted (`BIOMETRIC_TEMPLATE_KEY`; dev-only derived key logs a warning), never exposed by any endpoint/search/export; server-side 1:N identification + anti-spoof/liveness + active challenge; browser-supplied identity/scores never trusted — punches need an HMAC ticket bound to employee/mode/terminal/time (90 s); kiosks authenticate with hashed device tokens from one-time pairing codes; append-only `face_recognition_events` with scores only; retention/deletion configurable and **REQUIRES HR/LEGAL APPROVAL** (docs/MOBILE-FACE-ATTENDANCE.md). |
 | File uploads | Documents go to S3-compatible storage via pre-signed upload; store object key + MIME + size. AV scanning hook: `REQUIRES CONFIRMATION` of the organisation's scanner (ClamAV / Defender for Storage). |
 | Backups | PostgreSQL PITR (WAL archiving) + nightly logical dump; object storage versioning. Restore drills recommended quarterly. |
 | Locked payroll | Post-lock changes only via approved adjustments; every transition audited. |
@@ -24,3 +25,4 @@
 2. Redis-backed rate limiter for multi-replica deployments.
 3. Pre-signed upload endpoint + AV scan integration for documents.
 4. Entra group → role mapping automation.
+5. `BIOMETRIC_TEMPLATE_KEY` provisioning (KMS/secret store) and HR/Legal approval of the biometric consent & retention policy before enabling mobile face attendance in production.

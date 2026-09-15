@@ -50,7 +50,7 @@ function Hero({ subtitle, subtitleAr }: { subtitle: string; subtitleAr?: string 
   const first = (principal?.displayName ?? '').split(' ')[0];
   const actions = [
     can('employees:create') && { href: '/employees', icon: UserPlus, en: 'New employee', ar: 'موظف جديد' },
-    can('attendance:process') && { href: '/attendance', icon: RefreshCw, en: 'Recalculate attendance', ar: 'إعادة احتساب الحضور' },
+    can('attendance:process') && { href: '/time/attendance', icon: RefreshCw, en: 'Recalculate attendance', ar: 'إعادة احتساب الحضور' },
     can('timesheets:generate') && { href: '/timesheets', icon: FileSpreadsheet, en: 'Generate timesheets', ar: 'إنشاء كشوف الدوام' },
     can('payroll:run') && { href: '/payroll', icon: Wallet, en: 'Payroll run', ar: 'دورة رواتب' },
     can('leave:request:own') && !can('employees:create') && { href: '/leave', icon: Palmtree, en: 'Request leave', ar: 'طلب إجازة' },
@@ -76,7 +76,7 @@ function Attention() {
   const d = hr.data;
   const items = [
     can('workflows:act') && { icon: <CheckSquare size={18} />, title: ar ? 'موافقات بانتظارك' : 'Approvals waiting for you', hint: ar ? 'إجازات، عمل إضافي، تصحيحات حضور' : 'Leave, overtime, attendance corrections', count: tasks.data?.meta?.total ?? 0, href: '/approvals', tone: 'warning' },
-    d && { icon: <Fingerprint size={18} />, title: ar ? 'استثناءات حضور مفتوحة' : 'Open attendance exceptions', hint: ar ? 'غياب، تأخير، بصمة ناقصة، إضافي غير معتمد' : 'Absence, late, missing punch, unapproved OT', count: d.openExceptions, href: '/attendance?tab=exceptions', tone: 'danger' },
+    d && { icon: <Fingerprint size={18} />, title: ar ? 'استثناءات حضور مفتوحة' : 'Open attendance exceptions', hint: ar ? 'غياب، تأخير، بصمة ناقصة، إضافي غير معتمد' : 'Absence, late, missing punch, unapproved OT', count: d.openExceptions, href: '/time/attendance?tab=exceptions', tone: 'danger' },
     d && { icon: <FileWarning size={18} />, title: ar ? 'مستندات تنتهي خلال 60 يوماً' : 'Documents expiring within 60 days', hint: ar ? `${d.expiredDocuments} منتهية بالفعل` : `${d.expiredDocuments} already expired`, count: d.expiringDocuments60d, href: '/reports', tone: 'warning' },
     d && { icon: <Palmtree size={18} />, title: ar ? 'طلبات إجازة معلقة' : 'Pending leave requests', count: d.pendingLeave, href: '/leave', tone: 'default' },
     d && { icon: <UserCheck size={18} />, title: ar ? 'فترة تجربة تنتهي خلال 30 يوماً' : 'Probation ending within 30 days', hint: ar ? `${d.onProbation} تحت التجربة` : `${d.onProbation} on probation`, count: d.probationEnding30d, href: '/employees?status=PROBATION', tone: 'default' },
@@ -138,7 +138,7 @@ function Hr() {
       </div>}
       <Attention />
       <div className="grid gap-4 xl:grid-cols-2">
-        <Card title="Exceptions by type" actions={<Link className="btn-secondary btn-sm" href="/attendance?tab=exceptions">Open queue</Link>}>{d ? d.exceptionsByType.length ? <BarsChart data={d.exceptionsByType.map((e: any) => ({ type: humanStatus(e.type), count: e.count }))} xKey="type" series={[{ key: 'count', label: 'Open', color: COLORS.warning }]} /> : <EmptyState /> : <Skeleton className="h-52" />}</Card>
+        <Card title="Exceptions by type" actions={<Link className="btn-secondary btn-sm" href="/time/attendance?tab=exceptions">Open queue</Link>}>{d ? d.exceptionsByType.length ? <BarsChart data={d.exceptionsByType.map((e: any) => ({ type: humanStatus(e.type), count: e.count }))} xKey="type" series={[{ key: 'count', label: 'Open', color: COLORS.warning }]} /> : <EmptyState /> : <Skeleton className="h-52" />}</Card>
         <Card title="Documents expiring soon" padded={false}><div className="max-h-72 overflow-auto"><table className="data"><thead><tr><th>Employee</th><th>Document</th><th>Expiry</th><th>Days</th></tr></thead><tbody>{d?.expiringList.map((x: any) => <tr key={`${x.employeeNo}-${x.documentType}`}><td className="font-medium">{x.employeeNo} · {x.name}</td><td>{humanStatus(x.documentType)}</td><td>{x.expiryDate}</td><td><Badge status={x.daysToExpiry < 0 ? 'EXPIRED' : 'EXPIRING'}>{x.daysToExpiry}d</Badge></td></tr>)}</tbody></table>{d?.expiringList.length === 0 && <EmptyState title="No expiring documents" />}</div></Card>
       </div>
       <Sections />
@@ -186,7 +186,7 @@ function Me({ name }: { name: string }) {
       <Hero subtitle="Your attendance, leave and payslips." subtitleAr="حضورك وإجازاتك وقسائم راتبك." />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[['/me', 'My profile & documents', 'ملفي ومستنداتي'], ['/requests?new=1', 'Raise a request (loan, letter, training)', 'تقديم طلب'], ['/documents/letters', 'My letters', 'خطاباتي'], ['/compensation', 'My loans & bonuses', 'قروضي ومكافآتي']].map(([h, en, arL]) => <Link key={h} href={h} className="card card-hover flex items-center justify-between px-4 py-3 text-sm font-medium"><span>{locale === 'ar' ? arL : en}</span><span className="text-muted">→</span></Link>)}</div>
       {d && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatTile label="Today" value={<Badge status={d.today.status ?? 'UNKNOWN'} className="text-sm" />} hint={`In ${fmtTime(d.today.firstInAt)} · Out ${fmtTime(d.today.lastOutAt)}`} /><StatTile label="Present this month" value={d.monthSummary.present} tone="success" hint={`${d.monthSummary.absent} absent · ${d.monthSummary.late} late`} /><StatTile label="Overtime this month" value={fmtMinutes(d.monthSummary.overtimeMinutes)} /><StatTile label="Pending requests" value={d.pendingRequests} /></div>}
-      <div className="grid gap-4 md:grid-cols-2"><Card title="Leave balances">{d?.leaveBalances.map((b: any) => <div key={b.code} className="flex items-center justify-between py-1.5 text-sm"><span>{humanStatus(b.code)}</span><span className="font-semibold tabular-nums">{b.available} days</span></div>)}<Link href="/leave" className="btn-primary btn-sm mt-3">Request leave</Link></Card><Card title="Quick links"><div className="grid grid-cols-2 gap-2">{[['/attendance', 'My attendance'], ['/timesheets', 'My timesheets'], ['/payroll', 'My payslips'], [`/employees/${d?.employee?.id ?? ''}`, 'My profile']].map(([h, l]) => <Link key={h} href={h} className="btn-secondary">{l}</Link>)}</div></Card></div>
+      <div className="grid gap-4 md:grid-cols-2"><Card title="Leave balances">{d?.leaveBalances.map((b: any) => <div key={b.code} className="flex items-center justify-between py-1.5 text-sm"><span>{humanStatus(b.code)}</span><span className="font-semibold tabular-nums">{b.available} days</span></div>)}<Link href="/leave" className="btn-primary btn-sm mt-3">Request leave</Link></Card><Card title="Quick links"><div className="grid grid-cols-2 gap-2">{[['/time/attendance', 'My attendance'], ['/attendance', 'Face check-in'], ['/timesheets', 'My timesheets'], ['/payroll', 'My payslips'], [`/employees/${d?.employee?.id ?? ''}`, 'My profile']].map(([h, l]) => <Link key={h} href={h} className="btn-secondary">{l}</Link>)}</div></Card></div>
     </div>
   );
 }

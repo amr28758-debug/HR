@@ -50,6 +50,7 @@ pnpm test               # everything (needs DATABASE_URL_TEST)
 - [Attendance engine rules](docs/ATTENDANCE.md) · [Payroll policy & formulas](docs/PAYROLL.md)
 - [Matrix ARGO FACE / VYOM integration](docs/MATRIX-INTEGRATION.md) · [Legacy migration (Zoho)](docs/MIGRATION.md)
 - [HR Operating System — Command Center, HR requests, talent, compensation, letters](docs/HR-OS.md)
+- [Mobile face recognition attendance — phone/tablet/kiosk terminals, enrollment, thresholds, privacy](docs/MOBILE-FACE-ATTENDANCE.md)
 - [Security](docs/SECURITY.md) · [Releases & roadmap](docs/RELEASES.md) · [Development guide](docs/DEVELOPMENT.md)
 
 ## Repository layout

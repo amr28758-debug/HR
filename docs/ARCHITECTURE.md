@@ -19,6 +19,10 @@
                        │  Matrix COSEC VYOM │  Option B (temporary): VYOM export/poll → Burtplace
                        └─────────┬──────────┘
                             Matrix ARGO FACE terminals
+                       ┌────────────────────┐
+                       │ Mobile face        │  Phone / tablet browser as a terminal: camera → server-side 1:N face
+                       │ attendance         │  identification (FaceRecognitionProvider) + GPS geofence → same ledger,
+                       └─────────┬──────────┘  source MOBILE_FACE (docs/MOBILE-FACE-ATTENDANCE.md)
 ```
 
 Both options terminate in the same endpoint/contract: `ExternalAttendanceEvent` → `POST /api/v1/attendance/events` (push) or `BiometricProvider.getAttendanceEvents()` (pull). Attendance and payroll never know which path delivered the punch, so VYOM can be removed without touching them.
@@ -36,7 +40,7 @@ Both options terminate in the same endpoint/contract: `ExternalAttendanceEvent` 
 
 ## Data flow — the golden path
 
-1. **Punch** arrives (gateway push with API key, VYOM sync, or manual import) → `ingestEvents()` computes `SHA256(user|ts|dir|device)`, inserts into `attendance_raw_events` (`ON CONFLICT DO NOTHING`), resolves device→site and user→employee, flags `UNMAPPED_USER`.
+1. **Punch** arrives (gateway push with API key, VYOM sync, manual import, or a **mobile face attendance** ticket — `/attendance/mobile/punch` after server-side 1:N identification, liveness and geofence checks) → `ingestEvents()` computes `SHA256(user|ts|dir|device)`, inserts into `attendance_raw_events` (`ON CONFLICT DO NOTHING`), resolves device→site and user→employee, flags `UNMAPPED_USER`.
 2. **Processor** (`processEmployeeDay`) loads the schedule context (assignments employee > project > site, work patterns, shifts, holidays), attributes punches to the business date (cross-midnight aware), applies approved corrections, calls the pure `calculateDay()` and upserts `attendance_daily`, `attendance_events`, `attendance_exceptions`. Locked days are skipped.
 3. **Leave / OT** approvals (generic workflow engine) update `attendance_daily` (`ON_LEAVE`, `approved_overtime_minutes`) and trigger recalculation.
 4. **Timesheet** (`generateTimesheet`) aggregates the month (`summarizeTimesheet()`), keeping day lines for audit.
@@ -51,6 +55,7 @@ Both options terminate in the same endpoint/contract: `ExternalAttendanceEvent` 
 - Payroll after LOCKED: status transitions only; recalculation refused (422).
 - Identifiers: `employees.id` (UUID PK) · `employee_no` (business key) · `matrix_user_id` (external) · `zoho_record_id` (legacy, nullable, unused by core).
 - No vendor endpoint is called unless it is documented; unconfirmed capabilities are reported as `UNKNOWN` by `BiometricProvider.capabilities()`.
+- Mobile face attendance: the browser is never trusted with identity — punches require a server-signed recognition ticket; face templates are AES-256-GCM encrypted and never leave the `biometric_face_templates` table; `face_recognition_events` is append-only and holds scores, never embeddings or images.
 
 ## Scaling notes (5,000 employees / 100 sites)
 

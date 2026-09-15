@@ -52,6 +52,7 @@ function tabsFor(p: ReturnType<typeof requireAuth>, own: boolean, scope: string)
   if (has('assets:read') || own) tabs.push('assets');
   if (has('requests:read') || has('requests:read:team') || own) tabs.push('requests');
   if (has('letters:generate') || own) tabs.push('letters');
+  if (has('biometric:read') || has('biometric:enroll') || own) tabs.push('biometric');
   tabs.push('history');
   if (has('audit:read')) tabs.push('audit');
   void scope;

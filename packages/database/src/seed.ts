@@ -126,6 +126,10 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
       );
       site[code!] = r.rows[0].id;
     }
+    // EXAMPLE coordinates for the mobile face attendance geofences (approximate public landmarks per emirate) —
+    // replace with surveyed site coordinates in Organization → Sites before go-live.
+    const coords: Record<string, [number, number, number]> = { HO: [25.0972, 55.1745, 200], 'C31-SITE': [24.8867, 55.1650, 300], 'C31-CAMP': [24.9300, 55.1400, 250], 'C42-SITE': [25.3463, 55.4209, 300], 'C55-SITE': [24.4539, 54.3773, 300], 'WH-JA': [25.0110, 55.0620, 250] };
+    for (const [code, [lat, lng, r]] of Object.entries(coords)) await c.query(`UPDATE sites SET latitude = $2, longitude = $3, geofence_radius_m = $4 WHERE code = $1 AND latitude IS NULL`, [code, lat, lng, r]);
     log('organization seeded');
 
     // ── Holidays (2026 examples — dates for religious holidays REQUIRE annual confirmation) ──

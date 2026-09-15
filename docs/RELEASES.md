@@ -69,6 +69,18 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 | Employee search pickers (transfer, promotion, edit) | ✅ |
 | Object storage for letters/attachments, mobile push | ⬜ |
 
+## Release 6 — Mobile face recognition attendance (this repository state)
+
+| Item | Status |
+|---|---|
+| Phone / tablet browser as a face terminal: 1:N identification (no ID entry), server-side anti-spoof + liveness + active challenge, GPS geofence, punch into the existing raw ledger (`MOBILE_FACE`) | ✅ |
+| Three modes: employee mobile `/attendance`, supervisor sequential, site kiosk `/kiosk/:site` with one-time pairing codes and hashed device tokens | ✅ |
+| Enrollment in the Command Center (Biometric tab): 3-angle live capture, quality/consistency/duplicate guards, encrypted multi-sample templates, disable / re-enroll / delete, self-test | ✅ |
+| Administration → Attendance → Face recognition: versioned thresholds & policies, terminals, geofences, immutable recognition audit | ✅ |
+| Lifecycle: recognition disabled on TERMINATED/ARCHIVED; optional deletion after exit; retention & consent settings | ✅ 🟡 REQUIRES HR/LEGAL APPROVAL |
+| Provider: on-prem `@vladmandic/human` behind `FaceRecognitionProvider` (documented evaluation; passive liveness limits stated) | ✅ (PAD-certified provider ⬜ optional) |
+| Offline punch queue | ⬜ by design (recognition is server-side; page shows "Network connection required") |
+
 ## Next steps (recommended order)
 
 1. Obtain Matrix documentation → implement/validate VYOM or direct ARGO FACE adapter (see MATRIX-INTEGRATION.md).
@@ -77,3 +89,4 @@ Status legend: ✅ built & tested · 🟡 built, needs confirmation/real data ·
 4. Document upload + payslip PDF generation to object storage.
 5. HR/Legal sign-off of the settlement policy (`finalSettlement.signedOff`); SMTP relay and Teams webhook from IT.
 6. Letter PDF rendering to object storage; e-signature; performance calibration; succession.
+7. Mobile face attendance pilot on one site (surveyed geofences, `BIOMETRIC_TEMPLATE_KEY`, consent notice approved) → threshold review from the recognition events → rollout (docs/MOBILE-FACE-ATTENDANCE.md §12).

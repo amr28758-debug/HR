@@ -49,6 +49,14 @@ Base path `/api/v1`. OpenAPI 3.1 is generated from the Zod schemas and served at
 | `/payroll/employee-history/:employeeId` | Payroll history per employee |
 | `/auth/users` | User picker (emails only with `users:read`) |
 
+### Mobile face recognition attendance (see MOBILE-FACE-ATTENDANCE.md)
+
+| Prefix | Purpose |
+|---|---|
+| `/attendance/mobile/config`, `/attendance/mobile/terminals/pair`, `/attendance/mobile/recognize`, `/attendance/mobile/punch` | Terminal runtime: public config, kiosk pairing, 1:N recognition (signed ticket), punch into the raw ledger (`MOBILE_FACE`) |
+| `/biometric/employees/:id/status|enroll|test|disable|enable|template` | Face template lifecycle (encrypted; never returned) |
+| `/biometric/events`, `/biometric/settings`, `/biometric/terminals`, `/biometric/geofences` | Immutable recognition audit, versioned settings, kiosks (pairing codes / revoke / reissue), site geofences |
+
 ## Device gateway contract
 
 `POST /api/v1/attendance/events` with `X-API-Key`. Body: one object or an array (≤5,000):

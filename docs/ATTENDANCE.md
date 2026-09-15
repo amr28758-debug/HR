@@ -7,6 +7,9 @@ Pure functions in `packages/core/src/{shift-engine,attendance-engine,timesheet}.
 ```
 Device / Gateway / VYOM
   → POST /attendance/events           fingerprint = SHA256(user|ts|dir|device); ON CONFLICT DO NOTHING
+Mobile face terminal (phone / tablet / kiosk, source MOBILE_FACE — docs/MOBILE-FACE-ATTENDANCE.md)
+  → POST /attendance/mobile/recognize  server-side 1:N face identification + liveness + GPS geofence → signed ticket
+  → POST /attendance/mobile/punch      ticket → ingestEvents() — same fingerprint, same ledger, same engine below
   → attendance_raw_events (immutable) resolves device→site, user→employee (else UNMAPPED_USER exception)
   → processEmployeeDay(employee, date)
       schedule = resolveSchedule(assignments employee>project>site, work pattern week-offs, holidays)

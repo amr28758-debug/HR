@@ -10,16 +10,17 @@ import { useAuth } from '@/lib/providers';
 import { Alert, Avatar, Badge, Card, EmptyState, Field, KeyValue, Modal, Tabs, TableSkeleton, Skeleton, cn } from '@/components/ui';
 import { fmtDate, fmtDateTime, fmtMinutes, fmtMoney, fmtTime, humanStatus, monthName } from '@/lib/format';
 import { ActionsMenu, ActionModal } from '@/components/employee/actions';
+import { BiometricTab } from '@/components/employee/biometric';
 
-type Tab = 'overview' | 'personal' | 'employment' | 'job' | 'compensation' | 'attendance' | 'leave' | 'timesheet' | 'overtime' | 'payroll' | 'documents' | 'performance' | 'training' | 'disciplinary' | 'assets' | 'requests' | 'letters' | 'history' | 'audit';
-const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', personal: 'Personal', employment: 'Employment', job: 'Job & Organization', compensation: 'Compensation', attendance: 'Attendance', leave: 'Leave', timesheet: 'Timesheet', overtime: 'Overtime', payroll: 'Payroll', documents: 'Documents', performance: 'Performance', training: 'Training', disciplinary: 'Disciplinary', assets: 'Assets', requests: 'Requests', letters: 'Letters', history: 'History', audit: 'Audit' };
+type Tab = 'overview' | 'personal' | 'employment' | 'job' | 'compensation' | 'attendance' | 'leave' | 'timesheet' | 'overtime' | 'payroll' | 'documents' | 'performance' | 'training' | 'disciplinary' | 'assets' | 'requests' | 'letters' | 'biometric' | 'history' | 'audit';
+const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', personal: 'Personal', employment: 'Employment', job: 'Job & Organization', compensation: 'Compensation', attendance: 'Attendance', leave: 'Leave', timesheet: 'Timesheet', overtime: 'Overtime', payroll: 'Payroll', documents: 'Documents', performance: 'Performance', training: 'Training', disciplinary: 'Disciplinary', assets: 'Assets', requests: 'Requests', letters: 'Letters', biometric: 'Biometric', history: 'History', audit: 'Audit' };
 export default function Page({ params }: { params: Promise<{ id: string }> }) { const { id } = use(params); return <AppShell><Profile id={id} /></AppShell>; }
 
 const HEALTH_CLS: Record<string, string> = { VALID: 'bg-success/10 text-success ring-success/20', EXPIRING_SOON: 'bg-warning/10 text-warning ring-warning/20', EXPIRED: 'bg-danger/10 text-danger ring-danger/20', MISSING: 'bg-surface-2 text-muted ring-border', NOT_APPLICABLE: 'bg-surface-2 text-muted/70 ring-border' };
 const HEALTH_LABEL: Record<string, string> = { VALID: 'Valid', EXPIRING_SOON: 'Expiring soon', EXPIRED: 'Expired', MISSING: 'Missing', NOT_APPLICABLE: 'N/A' };
 
 function Profile({ id }: { id: string }) {
-  const { can } = useAuth();
+  const { can, principal } = useAuth();
   const sp = useSearchParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>((sp.get('tab') as Tab) ?? 'overview');
@@ -82,6 +83,7 @@ function Profile({ id }: { id: string }) {
         {tab === 'assets' && <AssetsTab id={id} />}
         {tab === 'requests' && <RequestsTab id={id} />}
         {tab === 'letters' && <LettersTab id={id} />}
+        {tab === 'biometric' && <BiometricTab id={id} own={principal?.employeeId === id} />}
         {tab === 'history' && <HistoryTab id={id} />}
         {tab === 'audit' && <AuditTab id={id} />}
       </div>
