@@ -6,6 +6,7 @@ import type pg from 'pg';
 import bcrypt from 'bcryptjs';
 import { PERMISSIONS, ROLE_PERMISSIONS } from './rbac.js';
 import { seedHrOs } from './seed-hros.js';
+import { seedCompensation } from './seed-compensation.js';
 
 type Log = (msg: string) => void;
 
@@ -54,6 +55,7 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
       ['management@burtplace.local', 'Management', 'MANAGEMENT'],
       ['auditor@burtplace.local', 'Auditor', 'AUDITOR'],
       ['employee@burtplace.local', 'Sample Employee', 'EMPLOYEE'],
+      ['comp.officer@burtplace.local', 'Compensation Officer', 'COMPENSATION_OFFICER'],
     ];
     for (const [email, name, role] of devUsers) {
       const r = await c.query(
@@ -383,6 +385,7 @@ export async function seed(pool: pg.Pool, log: Log = () => {}): Promise<void> {
     }
 
     await seedHrOs(c, log);
+    await seedCompensation(c, log);
 
     await c.query('COMMIT');
   } catch (err) {

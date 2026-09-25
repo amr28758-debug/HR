@@ -6,7 +6,8 @@ import type { DB } from '@burtplace/database';
  *   Trigger (event) → Conditions → Steps (sequential approvals; each step may have a condition) → Actions → Notifications.
  * Definitions live in workflow_definitions (JSON), so modules never hard-code approval chains.
  */
-export interface StepDef { key: string; approverType: 'MANAGER' | 'ROLE' | 'USER'; roleCode?: string; userId?: string; condition?: Condition }
+/** statusOnApprove: optional business status the owning entity takes when this step approves (used by compensation: HR_APPROVED, FINANCE_APPROVED…). */
+export interface StepDef { key: string; approverType: 'MANAGER' | 'ROLE' | 'USER'; roleCode?: string; userId?: string; condition?: Condition; statusOnApprove?: string }
 export interface Condition { field: string; op: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in'; value: unknown }
 export interface ActionDef { type: 'set_status' | 'transition_employee'; onApprove?: string; onReject?: string }
 
@@ -23,6 +24,14 @@ async function managerUserIdFor(db: Kysely<DB>, employeeId: string | undefined):
   if (!employeeId) return null;
   const row = await db.selectFrom('employees as e').leftJoin('employees as m', 'm.id', 'e.manager_employee_id').select('m.user_id').where('e.id', '=', employeeId).executeTakeFirst();
   return row?.user_id ?? null;
+}
+
+/** Which steps would run for this context (no side effects). null = no active definition or its conditions are not met. */
+export async function previewWorkflow(db: Kysely<DB>, code: string, context: Record<string, unknown>): Promise<{ definitionId: string; version: number; steps: StepDef[] } | null> {
+  const def = await db.selectFrom('workflow_definitions').selectAll().where('code', '=', code).where('is_active', '=', true).orderBy('version', 'desc').executeTakeFirst();
+  if (!def) return null;
+  if (!((def.conditions ?? []) as Condition[]).every((c) => evalCondition(c, context))) return null;
+  return { definitionId: def.id, version: def.version, steps: (def.steps as StepDef[]).filter((s) => evalCondition(s.condition, context)) };
 }
 
 /** Start a workflow for an entity. Returns the instance id, or null if no active definition / conditions not met. */

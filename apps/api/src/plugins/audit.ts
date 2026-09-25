@@ -1,5 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { Kysely } from 'kysely';
+import type { DB } from '@burtplace/database';
 
 export interface AuditEntry {
   action: string;
@@ -13,7 +15,8 @@ export interface AuditEntry {
 }
 
 declare module 'fastify' {
-  interface FastifyInstance { audit(req: FastifyRequest | null, entry: AuditEntry, source?: string): Promise<void> }
+  /** `executor` lets callers write the audit row inside their own transaction (it then commits/rolls back with the change). */
+  interface FastifyInstance { audit(req: FastifyRequest | null, entry: AuditEntry, source?: string, executor?: Kysely<DB>): Promise<void> }
 }
 
 /** Sensitive keys are masked in audit payloads (values are still tracked as changed). */
@@ -26,8 +29,8 @@ function mask(v: unknown): unknown {
 }
 
 export default fp(async function auditPlugin(app: FastifyInstance) {
-  app.decorate('audit', async (req: FastifyRequest | null, entry: AuditEntry, source = 'api') => {
-    await app.db.insertInto('audit_logs').values({
+  app.decorate('audit', async (req: FastifyRequest | null, entry: AuditEntry, source = 'api', executor?: Kysely<DB>) => {
+    await (executor ?? app.db).insertInto('audit_logs').values({
       actor_user_id: req?.principal?.userId ?? null,
       actor_label: req?.principal?.displayName ?? (source === 'worker' ? 'system-worker' : null),
       action: entry.action,

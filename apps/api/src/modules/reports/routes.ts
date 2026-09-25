@@ -8,7 +8,7 @@ import { requirePermission } from '../../plugins/rbac.js';
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const fmt = z.enum(['json', 'csv']).default('json');
 
-function toCsv(rows: Record<string, unknown>[]): string {
+export function toCsv(rows: Record<string, unknown>[]): string {
   if (!rows.length) return '';
   const cols = Object.keys(rows[0]!);
   const esc = (v: unknown) => { const s = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };

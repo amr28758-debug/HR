@@ -12,7 +12,7 @@ export const workflowRoutes: FastifyPluginAsync = async (app) => {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const defOut = z.object({ id: z.string(), code: z.string(), version: z.number(), name: z.string(), entityType: z.string(), trigger: z.unknown(), conditions: z.unknown(), steps: z.unknown(), actions: z.unknown(), isActive: z.boolean() });
   r.get('/definitions', { preHandler: requirePermission('workflows:read'), schema: { tags: ['workflows'], summary: 'Workflow definitions', response: { 200: z.array(defOut) } } }, async () => (await app.db.selectFrom('workflow_definitions').selectAll().orderBy('code').orderBy('version', 'desc').execute()).map((d) => ({ id: d.id, code: d.code, version: d.version, name: d.name, entityType: d.entity_type, trigger: d.trigger, conditions: d.conditions, steps: d.steps, actions: d.actions, isActive: d.is_active })));
-  r.post('/definitions', { preHandler: requirePermission('workflows:write'), schema: { tags: ['workflows'], summary: 'Create a new version of a workflow definition', body: z.object({ code: z.string().min(1), name: z.string().min(1), entityType: z.string().min(1), trigger: z.record(z.unknown()), conditions: z.array(z.unknown()).default([]), steps: z.array(z.object({ key: z.string(), approverType: z.enum(['MANAGER', 'ROLE', 'USER']), roleCode: z.string().optional(), userId: z.string().uuid().optional(), condition: z.object({ field: z.string(), op: z.enum(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in']), value: z.unknown() }).optional() })).min(1), actions: z.array(z.unknown()).default([]) }), response: { 201: defOut } } }, async (req, reply) => {
+  r.post('/definitions', { preHandler: requirePermission('workflows:write'), schema: { tags: ['workflows'], summary: 'Create a new version of a workflow definition', body: z.object({ code: z.string().min(1), name: z.string().min(1), entityType: z.string().min(1), trigger: z.record(z.unknown()), conditions: z.array(z.unknown()).default([]), steps: z.array(z.object({ key: z.string(), approverType: z.enum(['MANAGER', 'ROLE', 'USER']), roleCode: z.string().optional(), userId: z.string().uuid().optional(), condition: z.object({ field: z.string(), op: z.enum(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in']), value: z.unknown() }).optional(), statusOnApprove: z.string().max(40).optional() })).min(1), actions: z.array(z.unknown()).default([]) }), response: { 201: defOut } } }, async (req, reply) => {
     const p = requireAuth(req);
     const prev = await app.db.selectFrom('workflow_definitions').select('version').where('code', '=', req.body.code).orderBy('version', 'desc').executeTakeFirst();
     await app.db.updateTable('workflow_definitions').set({ is_active: false }).where('code', '=', req.body.code).execute();
@@ -45,7 +45,11 @@ export const workflowRoutes: FastifyPluginAsync = async (app) => {
   });
   r.post('/tasks/:id/decide', { preHandler: requirePermission('workflows:act'), schema: { tags: ['workflows'], summary: 'Approve or reject a task', params: idParam, body: z.object({ decision: z.enum(['APPROVED', 'REJECTED']), comment: z.string().max(1000).optional() }), response: { 200: z.object({ instanceStatus: z.string(), entityType: z.string(), entityId: z.string() }) } } }, async (req) => {
     const p = requireAuth(req);
+    const comp = await import('../compensation/workflow-hooks.js');
+    await comp.assertCompensationDecisionAllowed(app, req.params.id, p);
     const res = await decideTask(app.db, { taskId: req.params.id, userId: p.userId, userRoles: p.roles, decision: req.body.decision, comment: req.body.comment, actingFor: await activeDelegatorsFor(p.userId) });
+    // Compensation entities mirror every decision (role, previous → new status) before any side effect runs.
+    await comp.recordCompensationDecision(app, { taskId: req.params.id, principal: p, decision: req.body.decision, comment: req.body.comment ?? null, instanceStatus: res.instanceStatus, entityType: res.entityType, entityId: res.entityId });
     // Post-completion hooks that need module services
     if (res.instanceStatus === 'APPROVED') {
       for (const a of res.actions) {
@@ -57,6 +61,7 @@ export const workflowRoutes: FastifyPluginAsync = async (app) => {
       if (res.entityType === 'overtime_request') { const { applyApprovedOvertime } = await import('../overtime/service.js'); await applyApprovedOvertime(app.db, res.entityId); }
       if (res.entityType === 'leave_request') { const { applyLeaveDecision } = await import('../leave/service.js'); await applyLeaveDecision(app, res.entityId, 'APPROVED'); }
       if (res.entityType === 'hr_request') { const { applyHrRequest } = await import('../hr-requests/service.js'); await app.db.updateTable('hr_requests').set({ status: 'APPROVED', decided_by: p.userId, decided_at: new Date() }).where('id', '=', res.entityId).where('status', '=', 'PENDING').execute(); await applyHrRequest(app, res.entityId, p.userId); }
+      if (res.entityType === 'salary_review') await comp.onSalaryReviewApproved(app, res.entityId, p.userId);
       if (res.entityType === 'attendance_correction') { const c = await app.db.selectFrom('attendance_corrections').select(['employee_id', 'attendance_date']).where('id', '=', res.entityId).executeTakeFirst(); if (c) await app.queues.enqueueProcessAffected([{ employeeId: c.employee_id, date: c.attendance_date }]); }
     } else if (res.instanceStatus === 'REJECTED') {
       if (res.entityType === 'hr_request') { const { rejectHrRequest } = await import('../hr-requests/service.js'); await rejectHrRequest(app.db, res.entityId, p.userId, req.body.comment); }
