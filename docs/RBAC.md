@@ -12,6 +12,7 @@ The matrix lives in `packages/database/src/rbac.ts` and is seeded into `roles`, 
 | FINANCE_MANAGER | FINANCE + approve/lock/pay payroll |
 | PROJECT_MANAGER / DEPARTMENT_MANAGER | team scope: employees, attendance, leave/OT approvals, timesheet approval, manager dashboard |
 | IT_ADMIN | users, API keys, devices, biometric mappings, integrations, attendance ingest/process |
+| COMPENSATION_OFFICER | HR officer for compensation: salary read, prepares and submits salary changes, promotions, reviews and scenarios; cannot approve or configure |
 | EMPLOYEE | own profile, attendance, leave requests, OT requests, timesheets, payslips |
 | AUDITOR | read-only across all resources + audit trail |
 | MANAGEMENT | executive dashboards, final approvals (payroll, salary change, resignation) |
@@ -25,6 +26,15 @@ The matrix lives in `packages/database/src/rbac.ts` and is seeded into `roles`, 
 `analytics:read`, `config:write`, `delegation:manage`, `bulk:run`. Restricted request types
 (salary, promotion, loans, bonuses, deductions, disciplinary, termination) hide their content from
 callers without `compensation:read` / `disciplinary:read` unless the request is their own.
+
+## Compensation permissions
+
+`compensation:propose` (create/submit changes, promotions, reviews, scenarios), `compensation:config` (grades, bands,
+job-title mapping, merit matrix, promotion & compression rules), `compensation:settings` (thresholds, rating levels,
+approval chains — no amounts; granted to IT_ADMIN), `compensation:override` (beyond matrix/policy maximum, duplicate
+override, budget override — always with justification), `compensation:budget`, `reports:compensation`. Individual
+amounts always need `salary:read`. The requester of a compensation change can never approve it (segregation of duties).
+Full matrix: [COMPENSATION.md](COMPENSATION.md#8-permission-matrix).
 
 ## Mobile face attendance permissions
 
