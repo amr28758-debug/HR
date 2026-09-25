@@ -101,5 +101,4 @@ export const reviewRoutes: FastifyPluginAsync = async (app) => {
     await reopenReview(app, req, requireAuth(req), req.params.id, req.body.reason);
     return reviewMap(await getReviewRow(app.db, req.params.id));
   });
-  void paginated; void offset;
 };

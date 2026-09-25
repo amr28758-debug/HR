@@ -8,7 +8,7 @@ import { forbidden, notFound } from '../../plugins/errors.js';
 import { hasPermission, requireAuth, requirePermission } from '../../plugins/rbac.js';
 import { toCsv } from '../reports/routes.js';
 import { compressionFindings, scanAlerts } from './alerts.js';
-import { LIVE_STATUSES, loadProfiles, PENDING_STATUSES, type Profile } from './data.js';
+import { loadProfiles, PENDING_STATUSES, type Profile } from './data.js';
 import { loadPolicy } from './policy.js';
 import { loadCostLines, usageOf } from './service.js';
 
@@ -190,5 +190,5 @@ export const insightRoutes: FastifyPluginAsync = async (app) => {
     const money = hasPermission(p, 'salary:read');
     return { data: rows.map((a) => ({ id: Number(a.id), at: iso(a.occurred_at)!, user: a.actor_label, action: a.action, entityType: a.entity_type, entityId: a.entity_id, oldValue: money ? a.old_value : a.old_value ? '•••' : null, newValue: money ? a.new_value : a.new_value ? '•••' : null, reason: a.reason, ip: a.ip })), meta: pageMeta(q, total) };
   });
-  void LIVE_STATUSES;
+
 };

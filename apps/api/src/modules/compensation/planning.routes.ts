@@ -8,7 +8,7 @@ import { requireAuth, requirePermission } from '../../plugins/rbac.js';
 import { asBand, bandFor, loadProfiles } from './data.js';
 import { loadPolicy } from './policy.js';
 import { eligibilityIn } from './reviews.routes.js';
-import { createReview, getReviewRow, populateReview } from './reviews.service.js';
+import { createReview, populateReview } from './reviews.service.js';
 import { defaultMeritCells, loadCostLines, usageOf } from './service.js';
 
 /** Compensation budgets (allocated vs proposed vs approved) and what-if scenarios that never touch salaries. */
@@ -135,7 +135,7 @@ export const planningRoutes: FastifyPluginAsync = async (app) => {
     await populateReview(app, req, p, reviewId, pct);
     await app.db.updateTable('compensation_scenarios').set({ status: 'CONVERTED', review_id: reviewId }).where('id', '=', s.id).execute();
     await app.audit(req, { action: 'compensation.scenario.convert', entityType: 'compensation_scenario', entityId: s.id, newValue: { reviewId } });
-    void getReviewRow;
+
     return { reviewId };
   });
   r.delete('/scenarios/:id', { preHandler: requirePermission('compensation:propose'), schema: { tags: T, summary: 'Archive a scenario', params: idParam, response: { 204: z.null() } } }, async (req, reply) => {
