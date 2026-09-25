@@ -30,6 +30,8 @@ export function registerErrorHandler(app: FastifyInstance): void {
     const anyErr = err as { statusCode?: number; code?: string; message: string };
     // pg unique violation
     if (anyErr.code === '23505') return reply.status(409).send({ error: { code: 'CONFLICT', message: 'A record with the same unique key already exists', requestId } });
+    if (anyErr.code === '23P01') return reply.status(409).send({ error: { code: 'CONFLICT', message: 'The record overlaps an existing one (e.g. an active salary band for the same grade and dates)', requestId } });
+    if (anyErr.code === '23514') return reply.status(422).send({ error: { code: 'CHECK_VIOLATION', message: 'The values violate a data rule (e.g. min ≤ mid ≤ max, justification required for overrides)', requestId } });
     if (anyErr.code === '23503') return reply.status(422).send({ error: { code: 'FK_VIOLATION', message: 'Referenced record does not exist', requestId } });
     if (anyErr.statusCode && anyErr.statusCode < 500) return reply.status(anyErr.statusCode).send({ error: { code: anyErr.code ?? 'ERROR', message: anyErr.message, requestId } });
     req.log.error({ err }, 'unhandled error');

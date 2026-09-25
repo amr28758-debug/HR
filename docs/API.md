@@ -40,7 +40,7 @@ Base path `/api/v1`. OpenAPI 3.1 is generated from the Zod schemas and served at
 | `/employees/:id/promote|transfer|salary-change|bonus|deduction|loan|advance|assign-training|disciplinary|resign|terminate|generate-letter|start-clearance` | Business actions → HR requests |
 | `/hr-requests` | Request center (list, detail with what-changed & approval trail, cancel, re-apply, types) |
 | `/jobs` | Career levels, grades, families/functions, titles, job descriptions & versions, lookups |
-| `/compensation` | Deductions, bonuses, loans & instalments, increment cycles, grade check |
+| `/compensation` | Compensation management (grades, bands, profiles, salary changes, promotions, salary reviews, budgets, scenarios, dashboard, analysis, alerts, reports, audit — see [COMPENSATION.md](COMPENSATION.md)); deductions, bonuses, loans & instalments; grade check |
 | `/letters` | Templates, preview, generate, list, HTML, revoke, public `verify/:code` |
 | `/people` | Performance cycles/reviews, training catalog/records, disciplinary, notes |
 | `/analytics` | Control center, HR analytics, workforce cost, HR calendar |

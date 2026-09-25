@@ -2,7 +2,8 @@ import { sql, type Kysely } from 'kysely';
 import type { FastifyInstance } from 'fastify';
 import type { DB } from '@burtplace/database';
 import { badRequest, notFound, unprocessable } from '../../plugins/errors.js';
-import { startWorkflow } from '../workflows/service.js';
+import { previewWorkflow, startWorkflow } from '../workflows/service.js';
+import { recordLedgerForRequest } from '../compensation/ledger.js';
 import { transitionEmployee } from '../employees/service.js';
 import { addTimeline } from './timeline.js';
 
@@ -15,7 +16,7 @@ import { addTimeline } from './timeline.js';
  *
  * If no active workflow definition exists for the type the request is applied immediately (still audited).
  */
-export const HR_REQUEST_TYPES = ['PROMOTION', 'TRANSFER', 'SALARY_CHANGE', 'INCREMENT', 'LOAN', 'ADVANCE', 'BONUS', 'DEDUCTION', 'LETTER', 'TRAINING', 'DISCIPLINARY', 'DOCUMENT', 'RESIGNATION', 'TERMINATION', 'OTHER'] as const;
+export const HR_REQUEST_TYPES = ['PROMOTION', 'TRANSFER', 'SALARY_CHANGE', 'INCREMENT', 'GRADE_CHANGE', 'LOAN', 'ADVANCE', 'BONUS', 'DEDUCTION', 'LETTER', 'TRAINING', 'DISCIPLINARY', 'DOCUMENT', 'RESIGNATION', 'TERMINATION', 'OTHER'] as const;
 export type HrRequestType = (typeof HR_REQUEST_TYPES)[number];
 
 export interface CreateHrRequestInput {
@@ -28,6 +29,10 @@ export interface CreateHrRequestInput {
   requestedBy: string;
   /** Skip the approval workflow (only for actions already approved at a higher level, e.g. an APPROVED increment cycle). */
   bypassWorkflow?: boolean;
+  /** Workflow definition code to use instead of the type's default (compensation uses COMP_<CHANGE_TYPE>). */
+  workflowCode?: string;
+  /** Refuse (422) instead of auto-applying when no approval step would run — salary changes are never auto-approved. */
+  requireWorkflow?: boolean;
 }
 
 export async function nextRequestNo(db: Kysely<DB>): Promise<string> {
@@ -58,7 +63,7 @@ export async function snapshotEmployee(db: Kysely<DB>, employeeId: string): Prom
 export const WORKFLOW_CODE: Partial<Record<HrRequestType, string>> = { RESIGNATION: 'HR_RESIGNATION', TERMINATION: 'HR_TERMINATION' };
 
 const TITLES: Record<HrRequestType, string> = {
-  PROMOTION: 'Promotion', TRANSFER: 'Transfer', SALARY_CHANGE: 'Salary change', INCREMENT: 'Increment', LOAN: 'Loan', ADVANCE: 'Salary advance', BONUS: 'Bonus', DEDUCTION: 'Deduction',
+  PROMOTION: 'Promotion', TRANSFER: 'Transfer', SALARY_CHANGE: 'Salary change', INCREMENT: 'Increment', GRADE_CHANGE: 'Grade change', LOAN: 'Loan', ADVANCE: 'Salary advance', BONUS: 'Bonus', DEDUCTION: 'Deduction',
   LETTER: 'Letter', TRAINING: 'Training assignment', DISCIPLINARY: 'Disciplinary action', DOCUMENT: 'Document request', RESIGNATION: 'Resignation', TERMINATION: 'Termination', OTHER: 'HR request',
 };
 
@@ -68,6 +73,7 @@ export async function validatePayload(db: Kysely<DB>, type: HrRequestType, paylo
   const positive = (k: string) => { if (payload[k] !== undefined && !(Number(payload[k]) > 0)) throw badRequest(`${type}: '${k}' must be > 0`); };
   switch (type) {
     case 'PROMOTION': if (!payload.designationId && !payload.gradeId && !payload.careerLevelId) throw badRequest('PROMOTION needs designationId, gradeId or careerLevelId'); break;
+    case 'GRADE_CHANGE': need('gradeId'); break;
     case 'TRANSFER': if (!payload.departmentId && !payload.projectId && !payload.siteId && !payload.managerEmployeeId && !payload.costCenterId) throw badRequest('TRANSFER needs a target department, project, site, cost center or manager'); break;
     case 'SALARY_CHANGE': case 'INCREMENT': if (!Array.isArray(payload.lines) && payload.newBasic === undefined && payload.percentage === undefined) throw badRequest(`${type} needs lines[], newBasic or percentage`); break;
     case 'LOAN': case 'ADVANCE': need('principal'); positive('principal'); need('installments'); if (!(Number(payload.installments) >= 1)) throw badRequest('installments must be >= 1'); need('startPeriod'); break;
@@ -90,14 +96,20 @@ export async function validatePayload(db: Kysely<DB>, type: HrRequestType, paylo
 export async function createHrRequest(app: FastifyInstance, input: CreateHrRequestInput): Promise<{ id: string; requestNo: string; status: string; workflowInstanceId: string | null }> {
   const db = app.db;
   await validatePayload(db, input.type, input.payload, input.employeeId);
+  const wfCode = input.workflowCode ?? WORKFLOW_CODE[input.type] ?? input.type;
+  const wfContext = () => ({ employeeId: input.employeeId, requestType: input.type, amount: input.payload.amount ?? input.payload.principal ?? null, percentage: input.payload.percentage ?? null, effectiveDate: input.effectiveDate ?? null, ...(input.payload.contextExtras ?? {}) });
+  if (input.requireWorkflow && !input.bypassWorkflow) {
+    const preview = await previewWorkflow(db, wfCode, wfContext());
+    if (!preview || preview.steps.length === 0) throw unprocessable(`No approval workflow is configured for ${wfCode} — this request cannot be auto-approved. Configure the chain in Configuration → Approval chains.`);
+  }
   const before = await snapshotEmployee(db, input.employeeId);
   const requestNo = await nextRequestNo(db);
   const row = await db.insertInto('hr_requests').values({
     request_no: requestNo, request_type: input.type, employee_id: input.employeeId, title: input.title ?? `${TITLES[input.type]} — ${before.name as string}`, payload: JSON.stringify(input.payload), before_snapshot: JSON.stringify(before),
     effective_date: input.effectiveDate ?? null, reason: input.reason ?? null, status: 'PENDING', requested_by: input.requestedBy,
   }).returning(['id']).executeTakeFirstOrThrow();
-  const context = { employeeId: input.employeeId, requestType: input.type, amount: input.payload.amount ?? input.payload.principal ?? null, percentage: input.payload.percentage ?? null, effectiveDate: input.effectiveDate ?? null, ...(input.payload.contextExtras ?? {}) };
-  const wf = input.bypassWorkflow ? null : await startWorkflow(db, { code: WORKFLOW_CODE[input.type] ?? input.type, entityType: 'hr_request', entityId: row.id, initiatedBy: input.requestedBy, context });
+  const context = wfContext();
+  const wf = input.bypassWorkflow ? null : await startWorkflow(db, { code: wfCode, entityType: 'hr_request', entityId: row.id, initiatedBy: input.requestedBy, context });
   await db.updateTable('hr_requests').set({ workflow_instance_id: wf }).where('id', '=', row.id).execute();
   await addTimeline(db, { employeeId: input.employeeId, type: 'REQUEST', title: `${TITLES[input.type]} requested`, description: `${requestNo}${input.reason ? ` · ${input.reason}` : ''}`, refType: 'hr_request', refId: row.id, actorUserId: input.requestedBy, visibility: ['DISCIPLINARY', 'TERMINATION'].includes(input.type) ? 'RESTRICTED' : 'HR' });
   let status = 'PENDING';
@@ -157,13 +169,16 @@ async function closeAndOpenEmploymentHistory(db: Kysely<DB>, employeeId: string,
 }
 
 /** Apply an APPROVED request's side effects. Idempotent: an already APPLIED request is returned as-is. */
-export async function applyHrRequest(app: FastifyInstance, id: string, actorUserId: string): Promise<{ status: string; result: Record<string, unknown> | null; error?: string }> {
-  const db = app.db;
+export async function applyHrRequest(app: FastifyInstance, id: string, actorUserId: string, opts: { trx?: Kysely<DB> } = {}): Promise<{ status: string; result: Record<string, unknown> | null; error?: string }> {
+  const db = opts.trx ?? app.db;
   const r = await db.selectFrom('hr_requests').selectAll().where('id', '=', id).executeTakeFirst();
   if (!r) throw notFound('HR request', id);
   if (r.status === 'APPLIED') return { status: 'APPLIED', result: r.result as Record<string, unknown> | null };
-  if (r.status !== 'APPROVED') throw unprocessable(`Request is ${r.status}; only APPROVED requests can be applied`);
+  if (r.status !== 'APPROVED' && !(opts.trx && r.status === 'FAILED')) throw unprocessable(`Request is ${r.status}; only APPROVED requests can be applied`);
   const p = r.payload as Record<string, any>;
+  // Compensation-linked requests re-validate (band, duplicate, budget, stale salary) and update the ledger atomically.
+  if (p.compensationChangeId && !opts.trx) { const { applyCompensationRequest } = await import('../compensation/service.js'); return applyCompensationRequest(app, id, actorUserId); }
+  const inTrx = <T>(fn: (trx: Kysely<DB>) => Promise<T>): Promise<T> => (opts.trx ? fn(opts.trx) : db.transaction().execute(fn));
   const before = (r.before_snapshot ?? {}) as Record<string, any>;
   const effective = r.effective_date ?? new Date().toISOString().slice(0, 10);
   const type = r.request_type as HrRequestType;
@@ -171,7 +186,7 @@ export async function applyHrRequest(app: FastifyInstance, id: string, actorUser
   const result: Record<string, unknown> = {};
   const changes: Record<string, { from: unknown; to: unknown }> = {};
   try {
-    await db.transaction().execute(async (trx) => {
+    await inTrx(async (trx) => {
       switch (type) {
         case 'PROMOTION': {
           const patch: Record<string, unknown> = { updated_by: actorUserId };
@@ -192,6 +207,23 @@ export async function applyHrRequest(app: FastifyInstance, id: string, actorUser
             result.salaryStructureId = s.id; changes.basic = { from: s.prevBasic, to: s.basic }; changes.gross = { from: s.prevGross, to: s.gross };
           }
           await addTimeline(trx, { employeeId: emp, type: 'PROMOTION', title: `Promoted to ${after.designation ?? after.grade ?? 'new role'}`, description: Object.entries(changes).map(([k, v]) => `${k}: ${v.from ?? '—'} → ${v.to ?? '—'}`).join(' · '), occurredAt: new Date(effective), refType: 'hr_request', refId: id, actorUserId, visibility: 'EMPLOYEE', metadata: changes });
+          break;
+        }
+        case 'GRADE_CHANGE': {
+          const patch: Record<string, unknown> = { updated_by: actorUserId, grade_id: p.gradeId };
+          if (p.designationId) patch.designation_id = p.designationId;
+          const g = await trx.selectFrom('grades').select(['code', 'career_level_id']).where('id', '=', p.gradeId).executeTakeFirst();
+          if (!g) throw badRequest('Unknown grade');
+          patch.grade = g.code; if (g.career_level_id) patch.career_level_id = g.career_level_id;
+          await trx.updateTable('employees').set(patch).where('id', '=', emp).execute();
+          await closeAndOpenEmploymentHistory(trx, emp, effective, 'GRADE_CHANGE', r.reason, id, actorUserId);
+          const after = await snapshotEmployee(trx, emp);
+          for (const k of ['designation', 'grade', 'careerLevel']) if (before[k] !== after[k]) changes[k] = { from: before[k], to: after[k] };
+          if (p.lines?.length || p.newBasic !== undefined || p.percentage !== undefined) {
+            const s = await createSalaryVersion(trx, emp, { lines: p.lines, newBasic: p.newBasic, percentage: p.percentage, effectiveFrom: effective, reason: `Grade change ${r.request_no}`, source: 'GRADE_CHANGE', hrRequestId: id, userId: actorUserId });
+            result.salaryStructureId = s.id; changes.basic = { from: s.prevBasic, to: s.basic }; changes.gross = { from: s.prevGross, to: s.gross };
+          }
+          await addTimeline(trx, { employeeId: emp, type: 'PROMOTION', title: `Grade changed to ${after.grade ?? '—'}`, description: Object.entries(changes).map(([k, v]) => `${k}: ${v.from ?? '—'} → ${v.to ?? '—'}`).join(' · '), occurredAt: new Date(effective), refType: 'hr_request', refId: id, actorUserId, visibility: 'RESTRICTED', metadata: changes });
           break;
         }
         case 'TRANSFER': {
@@ -276,7 +308,15 @@ export async function applyHrRequest(app: FastifyInstance, id: string, actorUser
           break;
         }
       }
+      // Every salary version is mirrored in the compensation ledger (compensation-originated requests are updated by the compensation service).
+      if (result.salaryStructureId && !p.compensationChangeId) await recordLedgerForRequest(trx, { requestId: id, requestType: type, employeeId: emp, structureId: String(result.salaryStructureId), effectiveDate: effective, reason: r.reason ?? r.title, changeType: p.changeType, requestedBy: r.requested_by, approvedBy: actorUserId });
     });
+    if (opts.trx) {
+      // Caller owns the transaction: record status + audit inside it; post-commit side effects (letters…) are the caller's job.
+      await db.updateTable('hr_requests').set({ status: 'APPLIED', applied_at: new Date(), result: JSON.stringify({ ...result, changes }), apply_error: null }).where('id', '=', id).execute();
+      await app.audit(null, { action: `hr_request.${type.toLowerCase()}.applied`, entityType: 'hr_request', entityId: id, oldValue: Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.from])), newValue: Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.to])), reason: r.reason, approvalRef: r.workflow_instance_id, metadata: { employeeId: emp, requestNo: r.request_no, result } }, 'api', db);
+      return { status: 'APPLIED', result: { ...result, changes } };
+    }
     if (type === 'LETTER') {
       const { issueLetter } = await import('../letters/routes.js');
       const l = await issueLetter(app, { employeeId: emp, templateCode: p.templateCode, language: p.language, addressee: p.addressee, purpose: p.purpose ?? r.reason ?? undefined, change: p.change, userId: actorUserId, hrRequestId: id });
@@ -302,6 +342,7 @@ export async function applyHrRequest(app: FastifyInstance, id: string, actorUser
     await app.audit(null, { action: `hr_request.${type.toLowerCase()}.applied`, entityType: 'hr_request', entityId: id, oldValue: Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.from])), newValue: Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.to])), reason: r.reason, approvalRef: r.workflow_instance_id, metadata: { employeeId: emp, requestNo: r.request_no, result } });
     return { status: 'APPLIED', result: { ...result, changes } };
   } catch (e) {
+    if (opts.trx) throw e; // the caller's transaction is aborted — it records the failure
     const msg = (e as Error).message;
     await db.updateTable('hr_requests').set({ status: 'FAILED', apply_error: msg }).where('id', '=', id).execute();
     await app.audit(null, { action: `hr_request.${type.toLowerCase()}.failed`, entityType: 'hr_request', entityId: id, newValue: { error: msg }, metadata: { employeeId: emp } });

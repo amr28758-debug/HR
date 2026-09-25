@@ -2,7 +2,7 @@ import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import type { FastifyInstance } from 'fastify';
 
-export type JobName = 'biometric.retention' | 'notifications.deliver' | 'attendance.processAffected' | 'attendance.processRange' | 'attendance.reconcile' | 'timesheets.generate' | 'leave.accrual' | 'documents.expiryScan' | 'devices.healthScan' | 'biometric.sync' | 'payroll.calculate';
+export type JobName = 'biometric.retention' | 'notifications.deliver' | 'attendance.processAffected' | 'attendance.processRange' | 'attendance.reconcile' | 'timesheets.generate' | 'leave.accrual' | 'documents.expiryScan' | 'devices.healthScan' | 'biometric.sync' | 'payroll.calculate' | 'compensation.alerts.scan';
 export interface JobPayloads {
   'attendance.processAffected': { pairs: { employeeId: string; date: string }[] };
   'attendance.processRange': { from: string; to: string; employeeIds?: string[] };
@@ -15,6 +15,7 @@ export interface JobPayloads {
   'devices.healthScan': Record<string, never>;
   'biometric.sync': Record<string, never>;
   'payroll.calculate': { runId: string };
+  'compensation.alerts.scan': Record<string, never>;
 }
 
 const QUEUE = 'burtplace';
@@ -71,6 +72,7 @@ export class JobQueues {
     await this.queue.add('devices.healthScan', {}, { repeat: { pattern: '*/10 * * * *', tz }, jobId: 'cron-devices' });
     await this.queue.add('notifications.deliver', {}, { repeat: { pattern: '*/2 * * * *', tz }, jobId: 'cron-notifications' });
     await this.queue.add('biometric.retention', {}, { repeat: { pattern: '30 2 * * *', tz }, jobId: 'cron-biometric-retention' });
+    await this.queue.add('compensation.alerts.scan', {}, { repeat: { pattern: '45 6 * * *', tz }, jobId: 'cron-compensation-alerts' });
     await this.queue.add('biometric.sync', {}, { repeat: { pattern: '*/5 * * * *', tz }, jobId: 'cron-biometric' });
   }
 

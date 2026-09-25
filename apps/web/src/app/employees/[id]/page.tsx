@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { Pencil, FileSignature, ShieldAlert, AlertTriangle, Info, Clock, Users, Briefcase, CalendarDays, Coins, ChevronRight, MapPin, Building2, Phone, Mail, Flag } from 'lucide-react';
 import { AppShell } from '@/components/layout/shell';
+import { PromotionModal, SalaryChangeModal } from '@/components/compensation/common';
 import { api, qs, type Paginated } from '@/lib/api';
 import { useAuth } from '@/lib/providers';
 import { Alert, Avatar, Badge, Card, EmptyState, Field, KeyValue, Modal, Tabs, TableSkeleton, Skeleton, cn } from '@/components/ui';
@@ -53,7 +54,7 @@ function Profile({ id }: { id: string }) {
           <div className="flex flex-wrap items-center gap-2 pt-3">
             {can('employees:update') && <Link href={`/employees/${id}/edit`} className="btn-secondary"><Pencil size={15} />Edit</Link>}
             {(can('letters:generate') || sm.actions.find((a: any) => a.key === 'generate-letter')?.enabled) && <button className="btn-secondary" onClick={() => setAction('generate-letter')}><FileSignature size={15} />Generate letter</button>}
-            <ActionsMenu actions={sm.actions} onPick={(k) => setAction(k)} />
+            <ActionsMenu actions={sm.actions} onPick={(k) => setAction(k === 'promote' && can('compensation:propose') ? 'comp-promotion' : k === 'salary-change' && can('compensation:propose') ? 'comp-change' : k)} />
           </div>
         </div>
         <div className="grid gap-px overflow-hidden rounded-b-2xl border-t bg-border sm:grid-cols-2 lg:grid-cols-4">
@@ -87,7 +88,10 @@ function Profile({ id }: { id: string }) {
         {tab === 'history' && <HistoryTab id={id} />}
         {tab === 'audit' && <AuditTab id={id} />}
       </div>
-      <ActionModal employeeId={id} action={action} gross={sm.compensation?.gross} onClose={() => setAction(null)} onDone={(r) => { setAction(null); refresh(); setToast(r.requestNo ? `${r.requestNo} submitted · ${humanStatus(r.status)}` : r.letterNo ? `Letter ${r.letterNo} issued` : 'Done'); if (r.requestNo) setTab('requests'); if (r.letterNo) setTab('letters'); }} />
+      {/* Promotions and salary changes go through the compensation engine (band ceiling, merit matrix, duplicate & budget checks, COMP_* approval chains). */}
+      <SalaryChangeModal employeeId={id} open={action === 'comp-change'} initialType="MARKET_ADJUSTMENT" onClose={() => setAction(null)} onDone={(r) => { setAction(null); refresh(); setToast(`${r.changeNo} · ${humanStatus(r.status)}`); }} onPromote={() => setAction('comp-promotion')} />
+      <PromotionModal employeeId={id} open={action === 'comp-promotion'} onClose={() => setAction(null)} onDone={(r) => { setAction(null); refresh(); setToast(`${r.promotionNo} · ${humanStatus(r.status)}`); }} />
+      <ActionModal employeeId={id} action={action?.startsWith('comp-') ? null : action} gross={sm.compensation?.gross} onClose={() => setAction(null)} onDone={(r) => { setAction(null); refresh(); setToast(r.requestNo ? `${r.requestNo} submitted · ${humanStatus(r.status)}` : r.letterNo ? `Letter ${r.letterNo} issued` : 'Done'); if (r.requestNo) setTab('requests'); if (r.letterNo) setTab('letters'); }} />
       <TransitionModal id={id} to={transition} onClose={() => setTransition(null)} onDone={() => { refresh(); setTransition(null); }} />
     </>
   );
@@ -158,6 +162,7 @@ function CompensationTab({ id, status, lastWorkingDate }: { id: string; status: 
   const c = q.data, cur = c.versions[0];
   return (
     <div className="space-y-4">
+      <div className="flex justify-end"><Link href={`/compensation/employees/${id}`} className="btn-secondary btn-sm">Open compensation page — band position, history & actions</Link></div>
       {cur && <div className="grid gap-4 sm:grid-cols-4"><div className="card p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted">Gross</p><p className="mt-1 text-2xl font-bold text-accent">{fmtMoney(cur.gross, cur.currency)}</p><p className="text-xs text-muted">v{cur.version} · from {fmtDate(cur.effectiveFrom)}</p></div><div className="card p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted">Basic</p><p className="mt-1 text-2xl font-bold">{fmtMoney(cur.basic, cur.currency)}</p><p className="text-xs text-muted">{Math.round((cur.basic / cur.gross) * 100)}% of gross</p></div><div className="card p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted">Grade band</p>{c.grade ? <><p className="mt-1 text-2xl font-bold">{c.grade.code}</p><p className="text-xs text-muted">{fmtMoney(c.grade.min)} – {fmtMoney(c.grade.max)} · compa {c.grade.compaRatio ?? '—'}</p></> : <p className="mt-1 text-sm text-muted">No grade</p>}</div><div className="card p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted">Loans outstanding</p><p className="mt-1 text-2xl font-bold">{fmtMoney(c.loans.filter((l: any) => l.status === 'ACTIVE').reduce((s: number, l: any) => s + l.outstanding, 0))}</p><p className="text-xs text-muted">{c.loans.filter((l: any) => l.status === 'ACTIVE').length} active</p></div></div>}
       <Card title="Salary history" subtitle="Every version with what changed" padded={false}>
         {c.versions.length ? <table className="data"><thead><tr><th>Version</th><th>Effective</th><th>Until</th><th>Basic</th><th>Gross</th><th>Change</th><th>Source</th><th>Reason</th><th>By</th><th></th></tr></thead><tbody>{c.versions.map((v: any) => <><tr key={v.id} className="cursor-pointer" onClick={() => setOpen(open === v.id ? null : v.id)}><td className="font-semibold">v{v.version}</td><td>{fmtDate(v.effectiveFrom)}</td><td>{v.effectiveTo ? fmtDate(v.effectiveTo) : <span className="text-success">current</span>}</td><td className="tabular-nums">{fmtMoney(v.basic)}</td><td className="tabular-nums font-semibold">{fmtMoney(v.gross)}</td><td>{v.grossDelta === null ? <span className="text-muted">initial</span> : <span className={v.grossDelta >= 0 ? 'text-success' : 'text-danger'}>{v.grossDelta >= 0 ? '+' : ''}{fmtMoney(v.grossDelta)} ({v.grossDeltaPct}%)</span>}</td><td><Badge status={v.source === 'MANUAL' ? 'DRAFT' : 'APPROVED'}>{humanStatus(v.source)}</Badge></td><td className="max-w-xs truncate text-muted">{v.reason}</td><td className="text-muted">{v.createdBy ?? '—'}</td><td><ChevronRight size={14} className={cn('transition', open === v.id && 'rotate-90')} /></td></tr>

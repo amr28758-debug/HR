@@ -36,6 +36,8 @@ export const PERMISSIONS = [
   'jobs:read', 'jobs:write', 'compensation:read', 'compensation:write', 'requests:create:own', 'requests:create:any', 'requests:read', 'requests:read:team', 'requests:read:own',
   'disciplinary:read', 'disciplinary:write', 'performance:read', 'performance:read:team', 'performance:read:own', 'performance:write', 'training:read', 'training:read:own', 'training:write',
   'letters:generate', 'letters:read:own', 'letters:templates:write', 'notes:read', 'notes:write', 'notes:confidential', 'analytics:read', 'config:write', 'delegation:manage', 'bulk:run',
+  // compensation management (individual salary amounts additionally need salary:read)
+  'compensation:propose', 'compensation:config', 'compensation:settings', 'compensation:override', 'compensation:budget', 'reports:compensation',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -71,6 +73,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
       'reports:hr', 'reports:attendance', 'dashboard:hr', 'dashboard:executive', 'assets:read', 'assets:write', 'audit:read', 'migration:run',
       'jobs:read', 'jobs:write', 'compensation:read', 'compensation:write', 'requests:create:any', 'requests:read', 'disciplinary:read', 'disciplinary:write', 'performance:read', 'performance:write', 'training:read', 'training:write',
       'letters:generate', 'letters:templates:write', 'notes:read', 'notes:write', 'notes:confidential', 'analytics:read', 'config:write', 'delegation:manage', 'bulk:run',
+      'compensation:propose', 'compensation:config', 'compensation:settings', 'compensation:override', 'compensation:budget', 'reports:compensation',
       'biometric:read', 'biometric:enroll', 'biometric:delete', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write',
     ],
   },
@@ -78,22 +81,28 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
     name: 'Payroll Officer', description: 'Runs payroll, manages salary structures and adjustments',
     permissions: [
       ...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'salary:read', 'salary:write', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'timesheets:lock',
-      'payroll:read', 'payroll:run', 'payroll:adjust', 'payslips:read', 'reports:payroll', 'reports:attendance', 'dashboard:payroll', 'workflows:act', 'compensation:read', 'compensation:write', 'requests:read', 'jobs:read',
+      'payroll:read', 'payroll:run', 'payroll:adjust', 'payslips:read', 'reports:payroll', 'reports:attendance', 'dashboard:payroll', 'workflows:act', 'compensation:read', 'compensation:write', 'requests:read', 'jobs:read', 'reports:compensation',
     ],
   },
   FINANCE: {
     name: 'Finance', description: 'Payroll finance review, cost reports',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'compensation:read', 'requests:read', 'analytics:read', 'workflows:act'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'compensation:read', 'requests:read', 'analytics:read', 'workflows:act', 'reports:compensation'],
   },
   FINANCE_MANAGER: {
     name: 'Finance Manager', description: 'Finance plus payroll approval and payment',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'payroll:approve', 'payroll:lock', 'payroll:pay', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'dashboard:executive', 'workflows:act', 'compensation:read', 'requests:read', 'analytics:read'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'employees:banking:read', 'employees:banking:write', 'salary:read', 'org:read', 'timesheets:read', 'payroll:read', 'payroll:review:finance', 'payroll:approve', 'payroll:lock', 'payroll:pay', 'reports:payroll', 'reports:cost', 'dashboard:payroll', 'dashboard:executive', 'workflows:act', 'compensation:read', 'requests:read', 'analytics:read', 'compensation:budget', 'reports:compensation'],
   },
   PROJECT_MANAGER: { name: 'Project Manager', description: 'Sees and approves for project team', permissions: [...MANAGER_TEAM, 'reports:attendance', 'reports:cost'] },
   DEPARTMENT_MANAGER: { name: 'Department Manager', description: 'Sees and approves for department team', permissions: MANAGER_TEAM },
   IT_ADMIN: {
     name: 'IT Admin', description: 'Users, devices, integrations, biometric mapping',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'org:read', 'users:read', 'users:write', 'devices:read', 'devices:write', 'integrations:read', 'integrations:write', 'attendance:ingest', 'attendance:read', 'attendance:process', 'assets:read', 'assets:write', 'audit:read', 'biometric:read', 'biometric:enroll', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'org:read', 'users:read', 'users:write', 'devices:read', 'devices:write', 'integrations:read', 'integrations:write', 'attendance:ingest', 'attendance:read', 'attendance:process', 'assets:read', 'assets:write', 'audit:read', 'biometric:read', 'biometric:enroll', 'biometric:test', 'biometric:events:read', 'terminals:manage', 'face:config:write',
+      // System administrator: non-monetary compensation settings only — never individual salaries unless explicitly granted salary:read
+      'compensation:settings'],
+  },
+  COMPENSATION_OFFICER: {
+    name: 'HR Officer — Compensation', description: 'Prepares salary reviews, increments, promotions and scenarios; creates and submits for approval (cannot approve)',
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'org:read', 'jobs:read', 'performance:read', 'salary:read', 'compensation:read', 'compensation:propose', 'requests:read', 'reports:compensation', 'analytics:read'],
   },
   EMPLOYEE: { name: 'Employee', description: 'Self-service only', permissions: EMPLOYEE_SELF },
   AUDITOR: {
@@ -102,7 +111,7 @@ export const ROLE_PERMISSIONS: Record<string, { name: string; description: strin
   },
   MANAGEMENT: {
     name: 'Management', description: 'Executive dashboards, final approvals',
-    permissions: [...EMPLOYEE_SELF, 'employees:read', 'salary:read', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'payroll:read', 'payroll:approve', 'reports:hr', 'reports:attendance', 'reports:payroll', 'reports:cost', 'dashboard:executive', 'dashboard:hr', 'dashboard:payroll', 'workflows:act', 'jobs:read', 'compensation:read', 'requests:read', 'performance:read', 'analytics:read'],
+    permissions: [...EMPLOYEE_SELF, 'employees:read', 'salary:read', 'org:read', 'attendance:read', 'leave:read', 'overtime:read', 'timesheets:read', 'payroll:read', 'payroll:approve', 'reports:hr', 'reports:attendance', 'reports:payroll', 'reports:cost', 'dashboard:executive', 'dashboard:hr', 'dashboard:payroll', 'workflows:act', 'jobs:read', 'compensation:read', 'requests:read', 'performance:read', 'analytics:read', 'reports:compensation'],
   },
   SERVICE_DEVICE_GATEWAY: { name: 'Service: Device Gateway', description: 'Machine account for device/middleware event push', permissions: ['attendance:ingest', 'devices:read'] },
 };

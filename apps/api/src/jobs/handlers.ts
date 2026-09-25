@@ -62,6 +62,7 @@ export async function runJob<N extends JobName>(app: FastifyInstance, name: N, p
       return { deleted, eventRetentionDays: cfg.retention.recognitionEventRetentionDays };
     }
     case 'notifications.deliver': { const { deliverPending } = await import('../notifications/channels.js'); return { delivered: await deliverPending(app) }; }
+    case 'compensation.alerts.scan': { const { scanAlerts } = await import('../modules/compensation/alerts.js'); return scanAlerts(app.db); }
     case 'documents.expiryScan': {
       // Update statuses + notify HR about documents expiring within their reminder window (once per day per document)
       await app.db.updateTable('employee_documents').set({ status: 'EXPIRED' }).where('expiry_date', '<', iso(new Date())).where('deleted_at', 'is', null).where('status', '<>', 'EXPIRED').execute();

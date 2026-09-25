@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { sql } from 'kysely';
 import { nextStatuses } from '@burtplace/core';
 import { errorSchema, idParam, offset, pageMeta, paginated, paginationQuery, sortColumn } from '../../lib/pagination.js';
-import { badRequest, notFound } from '../../plugins/errors.js';
+import { badRequest, notFound, unprocessable } from '../../plugins/errors.js';
 import { hasPermission, requireAuth, requirePermission, resolveScope } from '../../plugins/rbac.js';
 import { assertCanSeeEmployee, nextEmployeeNo, teamEmployeeIds, transitionEmployee, WORKING } from './service.js';
 import { bankingSchema, documentCreate, documentOut, employeeCreate, employeeDetail, employeeListQuery, employeeSummary, employeeUpdate, historyOut, salaryCreate, salaryOut, transitionBody } from './schemas.js';
@@ -247,6 +247,11 @@ export const employeeRoutes: FastifyPluginAsync = async (app) => {
       if (prev) await trx.updateTable('employee_salary_structures').set({ effective_to: sql`(${req.body.effectiveFrom}::date - interval '1 day')::date` }).where('id', '=', prev.id).execute();
       const s = await trx.insertInto('employee_salary_structures').values({ employee_id: req.params.id, version: (prev?.version ?? 0) + 1, effective_from: req.body.effectiveFrom, currency: req.body.currency, basic_salary: basic, gross_salary: gross, reason: req.body.reason ?? null, created_by: p.userId }).returning('id').executeTakeFirstOrThrow();
       for (const l of req.body.lines) await trx.insertInto('employee_salary_lines').values({ salary_structure_id: s.id, component_id: byCode.get(l.componentCode)!.id, amount: l.amount }).execute();
+      // Compensation ledger: joining salary, or a flagged correction made outside the compensation workflow.
+      const { loadPolicy } = await import('../compensation/policy.js');
+      if (prev && (await loadPolicy(trx)).directSalaryEntry === 'INITIAL_ONLY') throw unprocessable('Salary changes after the initial salary must go through Compensation (salary change / review / promotion) — direct entry is disabled by policy');
+      const { recordDirectSalaryEntry } = await import('../compensation/ledger.js');
+      await recordDirectSalaryEntry(trx, { employeeId: req.params.id, structureId: s.id, reason: req.body.reason ?? null, userId: p.userId });
       return { id: s.id, prev };
     });
     await app.audit(req, { action: 'employee.salary.update', entityType: 'employee', entityId: req.params.id, oldValue: created.prev ? { basic: Number(created.prev.basic_salary), gross: Number(created.prev.gross_salary) } : null, newValue: { basic, gross, lines: req.body.lines }, reason: req.body.reason });

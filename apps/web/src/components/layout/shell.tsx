@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, Users, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, CheckSquare, Cpu, Building2, BarChart3, Settings, Search, Moon, Sun, Languages, LogOut, Bell, Menu, X, HelpCircle, Network, CalendarDays, Briefcase, Target, GraduationCap, Gavel, Coins, FolderOpen, FileSignature, Laptop, Inbox, UserCog, LineChart, SlidersHorizontal, Zap, ScanFace } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Layers, Fingerprint, CalendarClock, Palmtree, Timer, FileSpreadsheet, Wallet, CheckSquare, Cpu, Building2, BarChart3, Settings, Search, Moon, Sun, Languages, LogOut, Bell, Menu, X, HelpCircle, Network, CalendarDays, Briefcase, Target, GraduationCap, Gavel, Coins, FolderOpen, FileSignature, Laptop, Inbox, UserCog, LineChart, SlidersHorizontal, Zap, ScanFace } from 'lucide-react';
 import { useAuth, useUi } from '@/lib/providers';
 import { api } from '@/lib/api';
 import { Avatar, cn } from '@/components/ui';
@@ -37,7 +37,11 @@ export const GROUPS: { title: { en: string; ar: string }; items: NavItem[] }[] =
     { href: '/leave', en: 'Leave & balances', ar: 'الإجازات والأرصدة', icon: Palmtree, perms: ['leave:read', 'leave:read:team', 'leave:read:own'] },
   ] },
   { title: { en: 'Compensation', ar: 'التعويضات' }, items: [
-    { href: '/compensation', en: 'Salary, loans & bonuses', ar: 'الرواتب والقروض والمكافآت', icon: Coins, perms: ['compensation:read', 'salary:read:own'] },
+    { href: '/compensation', en: 'Compensation dashboard', ar: 'لوحة التعويضات', icon: Coins, perms: ['compensation:read'], exact: true },
+    { href: '/compensation/employees', en: 'Employee salaries', ar: 'رواتب الموظفين', icon: Users, perms: ['salary:read'] },
+    { href: '/compensation/reviews', en: 'Salary reviews & promotions', ar: 'مراجعات الرواتب والترقيات', icon: TrendingUp, perms: ['compensation:read'] },
+    { href: '/compensation/salary-structure', en: 'Salary structure', ar: 'هيكل الرواتب', icon: Layers, perms: ['compensation:read'] },
+    { href: '/compensation/pay-items', en: 'Loans, bonuses & deductions', ar: 'القروض والمكافآت والخصومات', icon: Wallet, perms: ['compensation:read', 'salary:read:own'] },
   ] },
   { title: { en: 'Payroll', ar: 'الرواتب' }, items: [
     { href: '/payroll', en: 'Payroll runs & payslips', ar: 'دورات الرواتب والقسائم', icon: Wallet, perms: ['payroll:read', 'payslips:read:own'] },
@@ -73,7 +77,10 @@ const ACTIONS: { en: string; ar: string; href: string; perms: string[]; keywords
   { en: 'New HR request', ar: 'طلب جديد', href: '/requests?new=1', perms: ['requests:create:own', 'requests:create:any'], keywords: 'loan advance letter training resignation' },
   { en: 'Generate letter', ar: 'إصدار خطاب', href: '/documents/letters?new=1', perms: ['letters:generate', 'letters:read:own'], keywords: 'certificate noc salary employment' },
   { en: 'Bulk operation', ar: 'عملية جماعية', href: '/employees?bulk=1', perms: ['bulk:run'], keywords: 'mass transfer bonus training' },
-  { en: 'Increment cycle', ar: 'دورة الزيادات', href: '/compensation?tab=increments', perms: ['compensation:write'], keywords: 'annual raise' },
+  { en: 'Annual salary review', ar: 'مراجعة الرواتب السنوية', href: '/compensation/reviews?new=1', perms: ['compensation:propose'], keywords: 'annual raise increment cycle' },
+  { en: 'Compensation scenarios', ar: 'سيناريوهات التعويضات', href: '/compensation/scenarios', perms: ['compensation:read'], keywords: 'what if budget planning increase' },
+  { en: 'Salary bands', ar: 'نطاقات الرواتب', href: '/compensation/salary-structure', perms: ['compensation:read'], keywords: 'grade min mid max band structure' },
+  { en: 'Compensation reports', ar: 'تقارير التعويضات', href: '/compensation/reports', perms: ['reports:compensation'], keywords: 'salary register export excel csv' },
   { en: 'Run payroll', ar: 'تشغيل الرواتب', href: '/payroll', perms: ['payroll:run'], keywords: 'calculate lock wps' },
   { en: 'Process attendance', ar: 'معالجة الحضور', href: '/time/attendance', perms: ['attendance:process'], keywords: 'punch recalculate' },
   { en: 'Face attendance terminal', ar: 'جهاز الحضور بالوجه', href: '/attendance', perms: [], keywords: 'face kiosk mobile check in punch' },

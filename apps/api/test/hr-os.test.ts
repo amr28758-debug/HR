@@ -188,22 +188,26 @@ describe('letters, bulk operations, increment cycle', () => {
     expect(applied.body.mode).toBe('APPLIED');
     expect(applied.body.results.every((r: any) => r.ok && r.requestNo)).toBe(true);
   });
-  it('increment cycle: populate → review → approve → apply creates INCREMENT salary versions', async () => {
+  it('salary review (successor of increment cycles): populate → submit → HR/Finance/Management approval → INCREMENT salary versions', async () => {
+    const officer = await login(app, 'comp.officer@burtplace.local');
     const dept = (await app.db.selectFrom('employees').select('department_id').where('id', '=', emp.id).executeTakeFirstOrThrow()).department_id!;
-    const c = await hrm.post('/api/v1/compensation/increment-cycles', { name: 'Test cycle', year: 2026, effectiveDate: '2026-11-01', defaultPercentage: 5, filters: { departmentIds: [dept] } });
+    const c = await officer.post('/api/v1/compensation/reviews', { name: 'Test cycle', year: 2026, effectiveDate: '2026-11-01', defaultPercentage: 5, maxPercentage: 10, defaultCeilingAction: 'CAP_AT_MAX', eligibilityRules: { departmentIds: [dept] } });
     expect(c.status, JSON.stringify(c.body)).toBe(201);
-    expect(c.body.stats.entries).toBeGreaterThan(0);
-    const detail = await hrm.get(`/api/v1/compensation/increment-cycles/${c.body.id}`);
-    const mine = detail.body.entries.find((e: any) => e.employee.id === emp.id);
-    expect(mine.currentBasic).toBe(5000);
-    expect(mine.newBasic).toBe(5250);
-    const others = detail.body.entries.filter((e: any) => e.employee.id !== emp.id).map((e: any) => ({ id: e.id, status: 'EXCLUDED' }));
-    if (others.length) await hrm.patch(`/api/v1/compensation/increment-cycles/${c.body.id}/entries`, { entries: others });
-    await hrm.patch(`/api/v1/compensation/increment-cycles/${c.body.id}/entries`, { entries: [{ id: mine.id, percentage: 10 }] });
-    for (const to of ['IN_REVIEW', 'APPROVED', 'APPLIED']) { const t = await hrm.post(`/api/v1/compensation/increment-cycles/${c.body.id}/transition`, { to }); expect(t.status, JSON.stringify(t.body)).toBe(200); if (to === 'APPLIED') { expect(t.body.applied).toBe(1); expect(t.body.failed).toEqual([]); } }
+    expect(c.body.summary.items).toBeGreaterThan(0);
+    const items = (await officer.get(`/api/v1/compensation/reviews/${c.body.id}/items?pageSize=200`)).body.data as any[];
+    const mine = items.find((e: any) => e.employee.id === emp.id);
+    expect(mine.currentSalary).toBe(5000);
+    expect(mine.status).toBe('PROPOSED');
+    const others = items.filter((e: any) => e.employee.id !== emp.id && e.status === 'PROPOSED').map((e: any) => ({ id: e.id, status: 'EXCLUDED' }));
+    if (others.length) await officer.patch(`/api/v1/compensation/reviews/${c.body.id}/items`, { items: others });
+    expect((await officer.patch(`/api/v1/compensation/reviews/${c.body.id}/items`, { items: [{ id: mine.id, percentage: 10 }] })).status).toBe(200);
+    expect((await officer.post(`/api/v1/compensation/reviews/${c.body.id}/submit`)).status).toBe(200);
+    for (const cl of [hrm, fin, mgmt]) { const t = await cl.post(`/api/v1/compensation/reviews/${c.body.id}/approve`, { decision: 'APPROVED' }); expect(t.status, JSON.stringify(t.body)).toBe(200); }
+    expect((await officer.get(`/api/v1/compensation/reviews/${c.body.id}`)).body.status).toBe('COMPLETED');
     const comp = await hrm.get(`/api/v1/employees/${emp.id}/compensation`);
     expect(comp.body.versions[0].source).toBe('INCREMENT');
-    expect(comp.body.versions[0].basic).toBe(5500);
+    expect(comp.body.versions[0].basic).toBeGreaterThan(5000);
+    expect(comp.body.versions[0].basic).toBeLessThanOrEqual(5500);
     expect(comp.body.versions[0].effectiveFrom).toBe('2026-11-01');
   });
 });

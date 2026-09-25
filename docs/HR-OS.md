@@ -80,10 +80,12 @@ Delegation: `POST /workflows/delegations` (from/to/dates). Delegates see the del
   linked to family/function/default grade/level (`PATCH /jobs/titles/:id`).
 - Job descriptions: `job_descriptions` + `job_description_versions` (DRAFT → APPROVED → SUPERSEDED);
   `POST /jobs/descriptions/:id/link-employees` stamps `job_description_version_id` on employees.
-- Compensation center (`/compensation`): deductions, bonuses, loans (pause/resume/close/reschedule),
-  increment cycles (`DRAFT → IN_REVIEW → APPROVED → APPLIED`; APPLIED creates an INCREMENT request per
-  included employee with the workflow bypassed because the cycle itself was approved — requires `salary:write`).
-- `GET /compensation/grade-check?gradeId&basic` → BELOW_MIN / IN_BAND / ABOVE_MAX + compa-ratio.
+- Compensation center (`/compensation`): full compensation & salary management — see **[COMPENSATION.md](COMPENSATION.md)**
+  (bands, band positioning, salary changes of 8 types, promotions, annual salary reviews, merit matrix, budgets,
+  scenarios, alerts, dashboard, reports). Loans, bonuses and deductions live at `/compensation/pay-items`.
+  Increment cycles were renamed to salary reviews (migration 0015) and now go through an approval chain with band,
+  duplicate and budget checks — the old `/increment-cycles` endpoints were removed.
+- `GET /compensation/grade-check?gradeId&basic` → BELOW_MIN / IN_BAND / ABOVE_MAX + compa-ratio, range penetration and configured status.
 - Payroll integration (`calculateRun`): scheduled `loan_installments` for the period (legacy loans
   without a schedule fall back to the fixed instalment), APPROVED deductions of the period, APPROVED
   bonuses (one-off or recurring window; amount or % of basic). On `LOCKED` they are marked
@@ -167,7 +169,7 @@ masks IBAN/account numbers. Nothing sensitive is written to application logs.
 
 | Item | Where | Status |
 |---|---|---|
-| Grade salary bands | `/talent/jobs` → Grades | seeded examples — **REQUIRES HR CONFIRMATION** |
+| Grade salary bands, thresholds, merit matrix, promotion rules, budgets | `/compensation/salary-structure`, `/compensation/settings`, `/compensation/budgets` | seeded examples — **REQUIRES HR / FINANCE CONFIRMATION** |
 | Approval chains per request type | `/admin/config` → Approval chains, `POST /workflows/definitions` | configurable |
 | Code lists (bonus types, disciplinary categories, exit reasons, document categories…) | `/admin/config` → Code lists | configurable |
 | Letter wording (NOC, experience, salary transfer, warning) | `/documents/letters` → Templates | **REQUIRES HR/LEGAL SIGN-OFF** |
